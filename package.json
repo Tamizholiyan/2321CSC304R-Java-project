@@ -1,0 +1,9 @@
+{
+  "name": "campuscommute",
+  "version": "0.0.1",
+  "description": "Campus Commute - Peer-to-Peer Carpooling Platform for Easwari Engineering College",
+  "scripts": {
+    "dev": "mvnw.cmd spring-boot:run",
+    "start": "mvnw.cmd spring-boot:run"
+  }
+}
