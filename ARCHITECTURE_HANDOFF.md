@@ -1,14 +1,14 @@
 # Campus Commute — System Architecture & Handoff Guide
 
-> **Target Audience:** AI Assistants and Developers implementing Modules 2, 3, and 4, and frontend integrations.  
-> **Status:** Module 1 (Identity & Access + Shared Infrastructure) and Client Frontend (Single-Page Application) are **Completed, Verified, and Frozen**.  
+> **Target Audience:** AI Assistants and Developers implementing Modules 3 and 4, and frontend integrations.  
+> **Status:** Module 1 (Identity & Access + Shared Infrastructure), Module 2 (Rides Lifecycle & Route Matching), and Client Frontend (SPA) are **Completed, Verified, and Frozen**.  
 > **Institution:** Easwari Engineering College (EEC), Ramapuram, Chennai, India.  
 
 ---
 
 ## 1. Project Overview & Multi-Module Structure
 
-Campus Commute is a peer-to-peer carpooling and bike-pooling platform localized exclusively for verified students and faculty of **Easwari Engineering College, Chennai**. The backend is architected as a **single Spring Boot 3.2.5 application** running on **Java 17** with a shared **MySQL database (`java_project`)**, complemented by an intuitive, market-ready single-page application (SPA).
+Campus Commute is a peer-to-peer carpooling and bike-pooling platform localized exclusively for verified students and faculty of **Easwari Engineering College, Chennai**. The backend is architected as a **single Spring Boot 3.2.5 application** running on **Java 17** with a cloud-hosted **Supabase PostgreSQL database** (with in-memory H2 fallback for test isolation), complemented by an intuitive, market-ready single-page application (SPA).
 
 > **SCOPE CLARIFICATION:**  
 > The project covers peer-to-peer student carpooling and two-wheeler ride-sharing. **College bus tracking is NOT included in this project.**
@@ -20,7 +20,7 @@ Campus Commute is a peer-to-peer carpooling and bike-pooling platform localized 
 | Module | Package | Scope & Responsibilities | Status |
 | :--- | :--- | :--- | :--- |
 | **Module 1** | `com.campuscommute.campuscommute.auth` & `...common` | Institutional Identity Verification, Walled-Garden Onboarding, Stateless JWT Security, Shared Exception Handling, Unified Frontend SPA | **COMPLETED & FROZEN** |
-| **Module 2** | `com.campuscommute.campuscommute.rides` | Ride Lifecycle (`SCHEDULED` → `ONGOING` → `COMPLETED`/`CANCELLED`), Route Matching, Dynamic Fuel Calculation Engine | *Ready to implement* |
+| **Module 2** | `com.campuscommute.campuscommute.rides` | Ride Lifecycle (`SCHEDULED` → `ONGOING` → `COMPLETED`/`CANCELLED`), Google Routes API v2 Distance Engine, Route Matching & Filtering | **COMPLETED & FROZEN** |
 | **Module 3** | `com.campuscommute.campuscommute.bookings` | Concurrency-Safe Seat Reservation (Pessimistic/Optimistic Locking), Booking Requests & Settlements | *Ready to implement* |
 | **Module 4** | `com.campuscommute.campuscommute.coordination` | Real-time Trip Coordination, WebSocket (`/ws/**`) & Live Peer Notifications | *Ready to implement* |
 
@@ -52,6 +52,23 @@ CREATE TABLE users (
     role            ENUM('DRIVER', 'RIDER') NOT NULL,
     CONSTRAINT fk_users_student_directory FOREIGN KEY (register_number) 
         REFERENCES student_directory(register_number)
+);
+```
+
+#### `rides` (Rides Offered — Owned by Module 2 — Frozen)
+Represents peer-to-peer carpool and bike-pool offers published by drivers.
+```sql
+CREATE TABLE rides (
+    ride_id           BIGSERIAL PRIMARY KEY,
+    driver_id         BIGINT NOT NULL,
+    start_location    VARCHAR(255) NOT NULL,
+    destination       VARCHAR(255) NOT NULL,
+    vehicle_type      VARCHAR(255) NOT NULL, -- 'TWO_WHEELER', 'FOUR_WHEELER'
+    mileage_kmpl      NUMERIC(10, 2) NOT NULL,
+    total_distance_km NUMERIC(10, 2) NOT NULL,
+    available_seats   INT NOT NULL,
+    ride_status       VARCHAR(255) NOT NULL, -- 'SCHEDULED', 'ONGOING', 'COMPLETED', 'CANCELLED', 'FULL'
+    CONSTRAINT fk_rides_driver FOREIGN KEY (driver_id) REFERENCES users(user_id)
 );
 ```
 > **CRITICAL RULE FOR ALL MODULES:**  
@@ -213,60 +230,25 @@ The frontend is divided into two primary root views (`view-section`):
   - **Body:** `{"role": "DRIVER"}` (or `"RIDER"`)
   - **Response:** Updated profile reflecting the new role.
 
+### Rides Management (`/api/rides` — Module 2 — Frozen)
+- **`POST /api/rides`**
+  - **Authorization:** `ROLE_DRIVER` or `ROLE_BOTH`
+  - **Body:** `{"startLocation": "Porur Roundana", "destination": "EEC Campus", "vehicleType": "FOUR_WHEELER", "mileageKmpl": 14.5, "availableSeats": 3}`
+  - **Behavior:** Calculates route distance automatically via Google Routes API v2 (`computeDistanceKm`), persists ride with status `SCHEDULED`, and returns created ride with `201 Created`.
+- **`GET /api/rides`**
+  - **Query Params:** `?start=...` & `?destination=...` (optional filters)
+  - **Response:** List of matching `RideResponse` objects.
+- **`GET /api/rides/{id}`**
+  - **Response:** Ride details for the given `id` (`404 Not Found` if missing).
+- **`PATCH /api/rides/{id}/status`**
+  - **Body:** `{"status": "ONGOING"}` (or `"COMPLETED"`, `"CANCELLED"`)
+  - **Behavior:** Validates state transitions via `RideStatusValidator`. Throws `409 Conflict` on illegal transitions.
+- **`DELETE /api/rides/{id}`**
+  - **Behavior:** Deletes the ride (`204 No Content`). Blocks deletion with `409 Conflict` if ride is currently `ONGOING`.
+
 ---
 
 ## 5. Specifications for Upcoming Modules
-
-### Module 2: Rides Lifecycle & Route Matching (`com.campuscommute.campuscommute.rides`)
-
-#### Recommended Entity: `Ride`
-```java
-@Entity
-@Table(name = "rides")
-public class Ride {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long rideId;
-
-    @Column(name = "driver_id", nullable = false)
-    private Long driverId; // FK to users.user_id
-
-    @Enumerated(EnumType.STRING)
-    private VehicleType vehicleType; // CARPOOL, BIKEPOOL
-
-    private String vehicleModel;       // e.g. "Honda City"
-    private String vehiclePlateNumber;  // e.g. "TN 09 BX 4521"
-    private Double mileageKmpl;         // e.g. 15.5
-
-    private String originAddress;
-    private Double originLatitude;
-    private Double originLongitude;
-
-    private String destinationAddress;
-    private Double destinationLatitude;
-    private Double destinationLongitude;
-
-    private LocalDateTime departureTime;
-    private Integer totalSeats;
-    private Integer availableSeats;
-
-    @Enumerated(EnumType.STRING)
-    private RideStatus status; // SCHEDULED, ONGOING, COMPLETED, CANCELLED
-
-    private Double completedDistanceKm; // Set upon ride completion
-    private BigDecimal totalFuelCost;    // Set upon ride completion
-    private BigDecimal perPersonCost;    // Set upon ride completion
-}
-```
-
-#### Required Endpoints for Module 2:
-- `POST /api/rides`: Create/publish a new ride (Driver only).
-- `GET /api/rides`: List available rides (supports filtering by `vehicleType`, `origin`, and proximity).
-- `GET /api/rides/me`: List rides offered by current driver.
-- `PATCH /api/rides/{id}/status`: Transition ride status (`SCHEDULED` $\rightarrow$ `ONGOING` $\rightarrow$ `COMPLETED`).
-- `POST /api/rides/{id}/complete`: Finalize ride, accept actual GPS odometer distance, calculate dynamic fuel cost, and return per-person split.
-
----
 
 ### Module 3: Concurrency-Safe Bookings & Settlements (`com.campuscommute.campuscommute.bookings`)
 
@@ -296,7 +278,7 @@ public class Booking {
 ```
 
 #### Required Endpoints for Module 3:
-- `POST /api/rides/{rideId}/book`: Request a seat (uses pessimistic lock on `rides` row).
+- `POST /api/rides/{rideId}/book`: Request a seat (uses pessimistic lock on `rides` row, decrements `available_seats`, triggers internal transition to `FULL` if seats reach 0).
 - `GET /api/bookings/my`: List bookings for current passenger.
 - `DELETE /api/bookings/{bookingId}`: Cancel booking and restore available seat.
 - `PATCH /api/bookings/{bookingId}/respond`: Driver approves or declines seat request.
@@ -333,6 +315,7 @@ The database is pre-seeded with verified Easwari Engineering College student rec
 | `310621104009` | Ananya Krishnan | Information Technology | 3 |
 | `310621104010` | Deepak Sundaram | Automobile Engineering | 4 |
 | `310625104397` | Tamizholiyan | Computer Science and Engineering | 2 |
+| `310625104423` | Varshini | Computer Science and Engineering | 2 |
 
 ---
 
