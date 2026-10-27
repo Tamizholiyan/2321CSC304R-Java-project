@@ -1,0 +1,4040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Commute | Easwari Engineering College</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS for interactive Chennai & EEC map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <style>
+        :root {
+            --primary: #1d4ed8;
+            --primary-hover: #1e40af;
+            --primary-light: #eff6ff;
+            --primary-glow: rgba(29, 78, 216, 0.25);
+            --emerald: #10b981;
+            --emerald-light: #ecfdf5;
+            --amber: #f59e0b;
+            --rose: #ef4444;
+            --text-main: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --bg-page: #f8fafc;
+            --surface: #ffffff;
+            --border-color: #e2e8f0;
+            --border-subtle: #f1f5f9;
+            --radius-xl: 18px;
+            --radius-lg: 12px;
+            --radius-md: 8px;
+            --radius-sm: 6px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+            --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* SVG Icon styling */
+        .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
+        /* Top Navigation Bar */
+        .navbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            padding: 12px 32px;
+        }
+
+        .navbar-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+
+        .brand-icon-box {
+            width: 36px;
+            height: 36px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .brand-name {
+            font-size: 19px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            color: #0f172a;
+        }
+
+        .nav-menu {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 9px 20px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid transparent;
+            text-decoration: none;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border-color: var(--border-color);
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 4px 12px 4px 6px;
+            border-radius: 9999px;
+            background: #f1f5f9;
+            transition: var(--transition);
+        }
+
+        .user-dropdown:hover {
+            background: #e2e8f0;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        /* View Section Visibility */
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        /* ========================================================
+           1. LANDING PAGE VIEW (Reference Image 4)
+           ======================================================== */
+        .hero-section {
+            position: relative;
+            min-height: 480px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.6)), url('/images/campus_hero.jpg') center/cover no-repeat;
+            padding: 60px 24px;
+            color: white;
+            text-align: center;
+        }
+
+        .hero-inner {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .hero-pill {
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(10px);
+            padding: 6px 18px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .hero-title {
+            font-size: 52px;
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            line-height: 1.15;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero-desc {
+            font-size: 18px;
+            color: #f1f5f9;
+            max-width: 650px;
+            line-height: 1.5;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Search Widget Floating Card */
+        .search-widget {
+            background: var(--surface);
+            padding: 10px 14px;
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 780px;
+            margin-top: 14px;
+        }
+
+        .search-field {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            text-align: left;
+        }
+
+        .field-icon {
+            color: var(--text-muted);
+        }
+
+        .field-content {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .field-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .field-input {
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            color: var(--text-main);
+            outline: none;
+            font-weight: 600;
+            width: 100%;
+        }
+
+        .btn-search {
+            padding: 16px 28px;
+            border-radius: var(--radius-lg);
+            background: var(--primary);
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .btn-search:hover {
+            background: var(--primary-hover);
+        }
+
+        /* Feature Pillars (Image 4) */
+        .features-grid {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 24px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 32px 24px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: #cbd5e1;
+        }
+
+        .feature-icon-circle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-shield { background: #ecfdf5; color: var(--emerald); }
+        .icon-fuel { background: #eff6ff; color: var(--primary); }
+        .icon-commute { background: #fef3c7; color: var(--amber); }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .feature-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Green Campus Banner */
+        .green-banner {
+            max-width: 1200px;
+            margin: 0 auto 60px;
+            padding: 22px 32px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: var(--radius-xl);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .green-banner-icon {
+            width: 44px;
+            height: 44px;
+            background: #dcfce7;
+            color: var(--emerald);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .green-banner-text h4 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #166534;
+        }
+
+        .green-banner-text p {
+            font-size: 14px;
+            color: #15803d;
+        }
+
+        /* ========================================================
+           2. AUTH MODAL / SPLIT SCREEN (Reference Image 1)
+           ======================================================== */
+        .auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition);
+        }
+
+        .auth-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .auth-container {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            width: 100%;
+            max-width: 960px;
+            min-height: 560px;
+            display: grid;
+            grid-template-columns: 45% 55%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            position: relative;
+        }
+
+        .auth-left {
+            position: relative;
+            background: linear-gradient(rgba(15, 23, 42, 0.5), rgba(15, 23, 42, 0.75)), url('/images/campus_hero.jpg') center/cover no-repeat;
+            padding: 40px 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            color: white;
+        }
+
+        .auth-left-content h2 {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 12px;
+        }
+
+        .auth-left-content p {
+            font-size: 15px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .auth-left-badges {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            padding-top: 20px;
+        }
+
+        .auth-badge-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            text-align: center;
+        }
+
+        .auth-badge-text {
+            font-size: 11px;
+            color: #e2e8f0;
+            font-weight: 600;
+        }
+
+        .auth-right {
+            padding: 40px 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+
+        .auth-close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #f1f5f9;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-header {
+            margin-bottom: 24px;
+        }
+
+        .auth-brand-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .auth-heading {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .auth-subhead {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: left;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .input-with-icon {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            color: var(--text-muted);
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: 12px 14px 12px 42px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            color: var(--text-main);
+            background: #ffffff;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .auth-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .auth-select {
+            width: 100%;
+            padding: 12px 14px 12px 42px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            color: var(--text-main);
+            background: #ffffff;
+            outline: none;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .auth-alert {
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            display: none;
+            line-height: 1.4;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert-success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .auth-submit-btn {
+            background: var(--primary);
+            color: white;
+            padding: 13px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 6px;
+        }
+
+        .auth-submit-btn:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .auth-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 12px;
+            margin: 12px 0;
+        }
+
+        .auth-divider::before, .auth-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .auth-divider span {
+            padding: 0 10px;
+        }
+
+        .auth-toggle-link {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .auth-toggle-link a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* ========================================================
+           3. STUDENT DASHBOARD VIEW (Reference Image 3)
+           ======================================================== */
+        .dashboard-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: calc(100vh - 61px);
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border-color);
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 16px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+        }
+
+        .sidebar-item:hover {
+            background: #f1f5f9;
+            color: var(--text-main);
+        }
+
+        .sidebar-item.active {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .sidebar-footer-card {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: var(--radius-lg);
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-footer-card div {
+            font-size: 12px;
+            font-weight: 700;
+            color: #166534;
+            line-height: 1.3;
+        }
+
+        /* Dashboard Content Area */
+        .dashboard-content {
+            background: #f8fafc;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* FIND RIDES VIEW (Image 3) */
+        .rides-view-container {
+            display: grid;
+            grid-template-columns: 55% 45%;
+            height: 100%;
+        }
+
+        .rides-left-panel {
+            padding: 24px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        /* LOCATION PICKER CARD (Uber/Ola/Rapido style) */
+        .location-picker-card {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 16px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+        }
+
+        .location-picker-inner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        .location-visual-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 0;
+            width: 16px;
+            flex-shrink: 0;
+        }
+
+        .pickup-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #16a34a;
+            border: 2px solid #bbf7d0;
+            box-shadow: 0 0 6px rgba(22, 163, 74, 0.4);
+        }
+
+        .vertical-dash-line {
+            width: 2px;
+            height: 36px;
+            border-left: 2px dashed #cbd5e1;
+        }
+
+        .drop-square {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            background: #dc2626;
+            border: 2px solid #fecaca;
+            box-shadow: 0 0 6px rgba(220, 38, 38, 0.4);
+        }
+
+        .location-inputs-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .location-field-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 6px 10px;
+            transition: var(--transition);
+        }
+
+        .location-field-row:focus-within {
+            border-color: var(--primary);
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .location-field-row.active-pin-mode {
+            border-color: #16a34a;
+            background: #f0fdf4;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+        }
+
+        .location-input-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .location-field-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .location-input-container input {
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            width: 100%;
+            padding: 0;
+        }
+
+        .location-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .loc-action-btn {
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: var(--transition);
+        }
+
+        .loc-action-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .loc-action-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .loc-action-btn.locating {
+            animation: pulse-gps 1.2s infinite ease-in-out;
+            background: #ecfdf5;
+            color: #059669;
+            border-color: #059669;
+        }
+
+        @keyframes pulse-gps {
+            0% { opacity: 0.6; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1.02); }
+            100% { opacity: 0.6; transform: scale(0.98); }
+        }
+
+        .swap-locations-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 700;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+            flex-shrink: 0;
+        }
+
+        .swap-locations-btn:hover {
+            transform: rotate(180deg);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Popular quick hubs */
+        .popular-hubs-chips {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            padding-top: 2px;
+        }
+
+        .hubs-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-right: 2px;
+        }
+
+        .hub-chip {
+            border: 1px solid var(--border-color);
+            background: #f8fafc;
+            border-radius: 9999px;
+            padding: 3px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .hub-chip:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #eff6ff;
+            transform: translateY(-1px);
+        }
+
+        /* Trip estimate stats bar */
+        .trip-estimate-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f1f5f9;
+            border-radius: var(--radius-md);
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .trip-est-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .trip-est-divider {
+            color: #94a3b8;
+        }
+
+        .trip-est-tag {
+            margin-left: auto;
+            background: #dcfce7;
+            color: #166534;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        /* Autocomplete dropdown */
+        .location-suggestions-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 16px;
+            right: 16px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .suggestion-item {
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: var(--transition);
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item:hover {
+            background: #f8fafc;
+        }
+
+        .sugg-main {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .sugg-dist {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .rides-filters-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-chip {
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-chip.active {
+            background: #0f172a;
+            color: white;
+            border-color: #0f172a;
+        }
+
+        .rides-list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .rides-list-header h3 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .rides-cards-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .ride-card {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+        }
+
+        .ride-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .driver-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .driver-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .driver-meta h4 {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .verified-badge {
+            color: var(--primary);
+            display: inline-flex;
+        }
+
+        .ride-type-tag {
+            font-size: 11px;
+            background: #f1f5f9;
+            color: var(--text-secondary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .driver-route {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .driver-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 3px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .driver-vehicle {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .ride-price-action {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+        }
+
+        /* Post-completion dynamic fuel split badge */
+        .cost-split-badge {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            text-align: right;
+        }
+
+        .cost-split-sub {
+            font-size: 10px;
+            font-weight: 500;
+            color: #15803d;
+        }
+
+        .seat-count {
+            font-size: 11px;
+            color: var(--primary);
+            font-weight: 700;
+            background: #eff6ff;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            border: 1px solid #bfdbfe;
+        }
+
+        /* STUDENT PROFILE VIEW */
+        .profile-view-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 24px;
+            width: 100%;
+        }
+
+        .profile-card {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 32px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .profile-header-banner {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 24px;
+        }
+
+        .profile-large-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #3b82f6);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 800;
+            box-shadow: 0 8px 16px var(--primary-glow);
+        }
+
+        .profile-header-details h2 {
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .profile-header-details p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .verified-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            background: #eff6ff;
+            color: var(--primary);
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+
+        .profile-grid-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .info-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .info-cell label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .info-cell span {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .role-switcher-card {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .role-switch-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .role-btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 700;
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .role-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Map container */
+        #ridesMap {
+            width: 100%;
+            height: 100%;
+            min-height: 480px;
+        }
+
+        #ridesMap.crosshair-cursor {
+            cursor: crosshair !important;
+        }
+
+        /* Map floating overlays */
+        .map-floating-banner {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.92);
+            color: white;
+            backdrop-filter: blur(8px);
+            padding: 8px 18px;
+            border-radius: 9999px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slide-down 0.25s ease-out;
+        }
+
+        @keyframes slide-down {
+            from { transform: translate(-50%, -20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+
+        .banner-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .banner-close-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .banner-close-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        .map-floating-controls {
+            position: absolute;
+            bottom: 24px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .map-ctrl-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: white;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            box-shadow: var(--shadow-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .map-ctrl-btn:hover {
+            transform: translateY(-2px);
+            color: var(--primary);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Vehicle map markers (Cars & Bikes) */
+        .vehicle-marker-icon {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: white;
+            padding: 4px 8px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border: 1.5px solid var(--border-color);
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            white-space: nowrap;
+        }
+
+        .vehicle-marker-icon:hover, .vehicle-marker-icon.active-ride {
+            transform: scale(1.15) translateY(-3px);
+            border-color: var(--primary);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+        }
+
+        .v-badge {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .v-badge.carpool {
+            background: #2563eb;
+        }
+
+        .v-badge.bikepool {
+            background: #059669;
+        }
+
+        .v-info {
+            font-size: 11px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Leaflet popup styling override */
+        .leaflet-popup-content-wrapper {
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            padding: 4px;
+        }
+
+        .popup-ride-card {
+            min-width: 220px;
+            padding: 6px;
+        }
+
+        .popup-driver-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .popup-driver-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 12px;
+        }
+
+        .popup-driver-meta h5 {
+            font-size: 13px;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .popup-driver-meta p {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 2px 0 0 0;
+        }
+
+        .popup-route-info {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            padding: 6px 8px;
+            background: #f8fafc;
+            border-radius: 6px;
+        }
+
+        .popup-book-btn {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: var(--radius-md);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .popup-book-btn:hover {
+            background: var(--primary-hover);
+        }
+
+        /* TOAST NOTIFICATION */
+        .toast-notification {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #0f172a;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            z-index: 9999;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        .toast-notification.success {
+            background: #059669;
+        }
+        .toast-notification.warning {
+            background: #d97706;
+        }
+        .toast-notification.error {
+            background: #dc2626;
+        }
+
+        /* Authentic Vertical Map Teardrop Pins & Leaflet container override */
+        .leaflet-div-icon {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .custom-pin-pickup-vertical,
+        .custom-pin-drop-vertical,
+        .custom-vehicle-div-icon {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .map-vertical-pin {
+            position: relative;
+            width: 36px;
+            height: 48px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: grab;
+            filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .map-vertical-pin:hover, .map-vertical-pin:active {
+            transform: scale(1.15) translateY(-5px);
+            cursor: grabbing;
+        }
+
+        .pin-tag {
+            position: absolute;
+            top: -26px;
+            font-size: 10px;
+            font-weight: 800;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+            letter-spacing: 0.04em;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        .pin-tag.pickup-tag {
+            background: #16a34a;
+            border: 1.5px solid #22c55e;
+        }
+
+        .pin-tag.drop-tag {
+            background: #dc2626;
+            border: 1.5px solid #ef4444;
+        }
+
+        .pin-shadow {
+            position: absolute;
+            bottom: -3px;
+            width: 16px;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 50%;
+            filter: blur(1.5px);
+        }
+
+        /* Driver Dashboard Styles */
+        .driver-role-banner {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            color: white;
+            padding: 12px 20px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .driver-role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--primary);
+            color: white;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            letter-spacing: 0.05em;
+        }
+
+        .mode-toggle-btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .mode-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .offer-ride-container {
+            max-width: 820px;
+            margin: 20px auto;
+            padding: 0 20px;
+            width: 100%;
+        }
+
+        .offer-ride-card {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: 28px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .offer-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        .offer-card-header h2 {
+            font-size: 20px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .vehicle-type-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .v-select-card {
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            background: #f8fafc;
+        }
+
+        .v-select-card.active {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .v-select-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: white;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+        }
+
+        .v-select-card.active .v-select-icon {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .offer-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .passenger-request-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: var(--shadow-sm);
+            margin-top: 10px;
+        }
+
+        .badge-count {
+            background: #ef4444;
+            color: white;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 9999px;
+            display: inline-block;
+        }
+
+        .driver-ride-card, .passenger-booking-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            box-shadow: var(--shadow-sm);
+            margin-top: 12px;
+            transition: var(--transition);
+        }
+
+        .driver-ride-card:hover, .passenger-booking-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: var(--shadow-md);
+        }
+
+        .driver-ride-meta h4, .passenger-booking-meta h4 {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 0 0 6px 0;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .driver-ride-sub, .passenger-booking-sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .status-pill.active {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .status-pill.confirmed {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        @media (max-width: 900px) {
+            .auth-container { grid-template-columns: 1fr; }
+            .auth-left { display: none; }
+            .dashboard-layout { grid-template-columns: 1fr; }
+            .rides-view-container { grid-template-columns: 1fr; }
+            .features-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SVG SYMBOL DEFINITIONS -->
+    <svg style="display: none;">
+        <symbol id="icon-car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 11 2 11.5 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>
+        </symbol>
+        <symbol id="icon-bike" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>
+        </symbol>
+        <symbol id="icon-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>
+        </symbol>
+        <symbol id="icon-fuel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 22h12"/><path d="M4 9h10"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/>
+        </symbol>
+        <symbol id="icon-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+        </symbol>
+        <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+        </symbol>
+        <symbol id="icon-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </symbol>
+        <symbol id="icon-leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+        </symbol>
+        <symbol id="icon-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </symbol>
+        <symbol id="icon-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </symbol>
+        <symbol id="icon-route" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a4.5 4.5 0 0 0 0-9H11"/><circle cx="18" cy="5" r="3"/><path d="M12 9V5"/>
+        </symbol>
+        <symbol id="icon-crosshair" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="22" y1="12" x2="18" y2="12"></line>
+            <line x1="6" y1="12" x2="2" y2="12"></line>
+            <line x1="12" y1="6" x2="12" y2="2"></line>
+            <line x1="12" y1="22" x2="12" y2="18"></line>
+            <circle cx="12" cy="12" r="3"></circle>
+        </symbol>
+    </svg>
+
+    <!-- TOP NAVIGATION -->
+    <header class="navbar">
+        <div class="navbar-container">
+            <div class="nav-brand" onclick="handleBrandClick()" title="Go to Home / Dashboard">
+                <div class="brand-icon-box">
+                    <svg class="icon" width="20" height="20"><use href="#icon-car"></use></svg>
+                </div>
+                <div class="brand-name">Campus Commute</div>
+            </div>
+
+            <!-- Public Nav Links (when logged out) -->
+            <ul class="nav-menu" id="publicNav">
+                <li><a class="nav-link active" onclick="navigateTo('landing')">Home</a></li>
+                <li><a class="nav-link" onclick="openAuthModal('signup')">About</a></li>
+                <li><a class="nav-link" onclick="openAuthModal('signup')">How It Works</a></li>
+                <li><a class="nav-link" onclick="openAuthModal('signup')">Contact</a></li>
+            </ul>
+
+            <!-- Public Action Buttons (when logged out) -->
+            <div class="nav-actions" id="publicActions">
+                <button class="btn btn-outline" onclick="openAuthModal('login')">Login</button>
+                <button class="btn btn-primary" onclick="openAuthModal('signup')">Sign Up</button>
+            </div>
+
+            <!-- Authenticated User Menu (when logged in) -->
+            <div class="nav-actions" id="authActions" style="display: none;">
+                <div class="user-dropdown" onclick="showDashboardTab('profile')">
+                    <div class="user-avatar" id="navAvatar">K</div>
+                    <span class="user-name" id="navUserName">Kavitha R</span>
+                    <span style="font-size: 10px; color: var(--text-muted); margin-left: 4px;">▼</span>
+                </div>
+                <button class="btn btn-outline" style="padding: 6px 14px; font-size: 12px;" onclick="handleLogout()">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================================
+         VIEW 1: LANDING PAGE (Reference Image 4)
+         ======================================================== -->
+    <section id="landingView" class="view-section active">
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <div class="hero-inner">
+                <div class="hero-pill">
+                    <svg class="icon" width="14" height="14" style="color:#86efac;"><use href="#icon-leaf"></use></svg>
+                    <span>Greener Rides</span>
+                    <span>•</span>
+                    <span>Lower Costs</span>
+                    <span>•</span>
+                    <span>Stronger Community</span>
+                </div>
+                <h1 class="hero-title">Unified Campus Commute</h1>
+                <p class="hero-desc">
+                    Share rides, save money, reduce emissions. A safer, smarter way to get around Easwari Engineering College.
+                </p>
+
+                <div style="margin-top: 14px;">
+                    <button class="btn-search" id="heroFindRidesBtn" style="padding: 14px 32px; font-size: 16px; border-radius: 9999px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);" onclick="handleFindRidesClick()">
+                        <svg class="icon" width="18" height="18" id="heroBtnIcon"><use href="#icon-search"></use></svg>
+                        <span id="heroBtnText">Find Rides</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3 Feature Pillars -->
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon-circle icon-shield">
+                    <svg class="icon" width="28" height="28"><use href="#icon-shield-check"></use></svg>
+                </div>
+                <h3 class="feature-title">Verified College Network</h3>
+                <p class="feature-desc">
+                    Closed institutional community. Every account is cross-verified against official Easwari Engineering College directory records.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-circle icon-fuel">
+                    <svg class="icon" width="28" height="28"><use href="#icon-fuel"></use></svg>
+                </div>
+                <h3 class="feature-title">Fair Dynamic Fuel Cost</h3>
+                <p class="feature-desc">
+                    Transparent post-ride pricing calculated by the system based on actual distance, vehicle mileage, and current fuel rates.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon-circle icon-commute">
+                    <svg class="icon" width="28" height="28"><use href="#icon-route"></use></svg>
+                </div>
+                <h3 class="feature-title">Direct Campus Routes</h3>
+                <p class="feature-desc">
+                    Convenient peer-to-peer matches on cars and two-wheelers connecting Chennai corridors directly to Ramapuram campus.
+                </p>
+            </div>
+        </div>
+
+        <!-- Green Banner -->
+        <div class="green-banner">
+            <div class="green-banner-icon">
+                <svg class="icon" width="24" height="24"><use href="#icon-leaf"></use></svg>
+            </div>
+            <div class="green-banner-text">
+                <h4>Together for a greener campus</h4>
+                <p>Fewer vehicles. Less pollution. A healthier tomorrow.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================================
+         VIEW 2: AUTHENTICATED DASHBOARD (Reference Image 3)
+         ======================================================== -->
+    <section id="dashboardView" class="view-section">
+        <div class="dashboard-layout">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-menu" id="sidebarMenu">
+                    <button class="sidebar-item active" id="tabFindRides" onclick="showDashboardTab('findRides')">
+                        <svg class="icon" width="18" height="18"><use href="#icon-search"></use></svg>
+                        <span>Find Rides</span>
+                    </button>
+                    <button class="sidebar-item" id="tabMyRides" onclick="showDashboardTab('myRides')">
+                        <svg class="icon" width="18" height="18"><use href="#icon-car"></use></svg>
+                        <span>My Bookings</span>
+                    </button>
+                    <button class="sidebar-item" id="tabProfile" onclick="showDashboardTab('profile')">
+                        <svg class="icon" width="18" height="18"><use href="#icon-user"></use></svg>
+                        <span>Profile & Role</span>
+                    </button>
+                </div>
+
+                <div class="sidebar-footer-card">
+                    <svg class="icon" width="20" height="20" style="color: #166534;"><use href="#icon-leaf"></use></svg>
+                    <div>Save fuel.<br>Save the planet.</div>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <div class="dashboard-content">
+                
+                <!-- Commuter Role & Mode Switcher Banner -->
+                <div class="driver-role-banner" id="commuteModeBanner">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="driver-role-badge" id="roleBadgeText">PASSENGER MODE</span>
+                        <span style="font-size: 13px; color: #94a3b8;" id="roleBadgeSubtitle">Browse and book seats with verified peers</span>
+                    </div>
+                    <button class="mode-toggle-btn" onclick="toggleCommuterMode()" id="btnSwitchMode">
+                        Switch to Driver Mode ⇄
+                    </button>
+                </div>
+                
+                <!-- FIND RIDES VIEW (Image 3) -->
+                <div id="subViewFindRides" class="rides-view-container">
+                    <div class="rides-left-panel">
+                        <!-- Uber/Ola/Rapido Style Location Selector -->
+                        <div class="location-picker-card">
+                            <div class="location-picker-inner">
+                                <div class="location-visual-indicator">
+                                    <div class="pickup-dot"></div>
+                                    <div class="vertical-dash-line"></div>
+                                    <div class="drop-square"></div>
+                                </div>
+                                <div class="location-inputs-wrapper">
+                                    <!-- Pickup input -->
+                                    <div class="location-field-row" id="pickupFieldRow">
+                                        <div class="location-input-container">
+                                            <span class="location-field-label">PICKUP LOCATION</span>
+                                            <input type="text" id="dashFrom" placeholder="Search pickup or use GPS" value="Vadapalani, Chennai" autocomplete="off">
+                                        </div>
+                                        <div class="location-actions">
+                                            <button class="loc-action-btn" id="btnGpsLocate" title="Use Device GPS Location" onclick="handleUseGpsLocation()">
+                                                <svg class="icon" width="14" height="14"><use href="#icon-crosshair"></use></svg>
+                                                <span>GPS</span>
+                                            </button>
+                                            <button class="loc-action-btn" id="btnDropPickupPin" title="Drop Pin on Map" onclick="toggleMapPinMode('PICKUP')">
+                                                <svg class="icon" width="14" height="14"><use href="#icon-pin"></use></svg>
+                                                <span>Pin</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Destination input -->
+                                    <div class="location-field-row" id="dropFieldRow">
+                                        <div class="location-input-container">
+                                            <span class="location-field-label">DROP LOCATION</span>
+                                            <input type="text" id="dashTo" placeholder="Search destination" value="Easwari Engineering College, Ramapuram" autocomplete="off">
+                                        </div>
+                                        <div class="location-actions">
+                                            <button class="loc-action-btn" id="btnDropDestPin" title="Drop Pin on Map" onclick="toggleMapPinMode('DROP')">
+                                                <svg class="icon" width="14" height="14"><use href="#icon-pin"></use></svg>
+                                                <span>Pin</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Swap button -->
+                                <button class="swap-locations-btn" onclick="swapLocations()" title="Swap Pickup & Drop Locations">
+                                    ⇄
+                                </button>
+                            </div>
+
+                            <!-- Autocomplete dropdown -->
+                            <div id="locationSuggestions" class="location-suggestions-dropdown" style="display: none;"></div>
+
+                            <!-- Popular Hub Chips -->
+                            <div class="popular-hubs-chips">
+                                <span class="hubs-label">Quick:</span>
+                                <button class="hub-chip" onclick="setQuickHub('Easwari Engineering College', [13.0315, 80.1804], 'DROP')">EEC Campus</button>
+                                <button class="hub-chip" onclick="setQuickHub('Ramapuram Junction', [13.0336, 80.1765], 'PICKUP')">Ramapuram</button>
+                                <button class="hub-chip" onclick="setQuickHub('Porur Junction', [13.0359, 80.1568], 'PICKUP')">Porur</button>
+                                <button class="hub-chip" onclick="setQuickHub('Guindy Metro', [13.0067, 80.2023], 'PICKUP')">Guindy</button>
+                                <button class="hub-chip" onclick="setQuickHub('Vadapalani', [13.0500, 80.2120], 'PICKUP')">Vadapalani</button>
+                                <button class="hub-chip" onclick="setQuickHub('Koyambedu', [13.0694, 80.1948], 'PICKUP')">Koyambedu</button>
+                                <button class="hub-chip" onclick="setQuickHub('Tambaram', [12.9249, 80.1000], 'PICKUP')">Tambaram</button>
+                            </div>
+
+                            <!-- Trip estimate stats bar -->
+                            <div class="trip-estimate-bar" id="tripEstimateBar">
+                                <div class="trip-est-item">
+                                    <svg class="icon" width="14" height="14" style="color: var(--primary);"><use href="#icon-route"></use></svg>
+                                    <span id="tripDistanceText">Distance: 8.2 km</span>
+                                </div>
+                                <div class="trip-est-divider">•</div>
+                                <div class="trip-est-item">
+                                    <svg class="icon" width="14" height="14" style="color: var(--text-muted);"><use href="#icon-clock"></use></svg>
+                                    <span id="tripDurationText">~18 - 22 mins</span>
+                                </div>
+                                <div class="trip-est-divider">•</div>
+                                <div class="trip-est-tag" id="tripNearbyRidesCount">4 rides nearby</div>
+                            </div>
+                        </div>
+
+                        <!-- Filters -->
+                        <div class="rides-filters-row">
+                            <button class="filter-chip active" onclick="filterRides('ALL', this)">
+                                <span>All Rides</span>
+                            </button>
+                            <button class="filter-chip" onclick="filterRides('CARPOOL', this)">
+                                <svg class="icon" width="14" height="14"><use href="#icon-car"></use></svg>
+                                <span>Carpool</span>
+                            </button>
+                            <button class="filter-chip" onclick="filterRides('BIKEPOOL', this)">
+                                <svg class="icon" width="14" height="14"><use href="#icon-bike"></use></svg>
+                                <span>Bike-pool</span>
+                            </button>
+                        </div>
+
+                        <!-- Available rides listing -->
+                        <div class="rides-list-header">
+                            <h3>Available Rides</h3>
+                            <span style="font-size: 13px; color: var(--text-muted);">Sort by: Departure Time ▾</span>
+                        </div>
+
+                        <div class="rides-cards-list" id="ridesListContainer">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Map Panel (Right side) -->
+                    <div style="position: relative; height: 100%;">
+                        <div id="ridesMap"></div>
+
+                        <!-- Map Floating Banner (when pin-drop mode is enabled) -->
+                        <div id="mapPinDropBanner" class="map-floating-banner" style="display: none;">
+                            <div class="banner-content">
+                                <span id="mapPinDropModeText">📍 Tap anywhere on map to set Pickup (or drag pin)</span>
+                                <button class="banner-close-btn" onclick="exitMapPinMode()">Done</button>
+                            </div>
+                        </div>
+
+                        <!-- Map Floating Controls (GPS & Recenter) -->
+                        <div class="map-floating-controls">
+                            <button class="map-ctrl-btn" onclick="handleUseGpsLocation()" title="Use Device GPS Location">
+                                <svg class="icon" width="18" height="18"><use href="#icon-crosshair"></use></svg>
+                            </button>
+                            <button class="map-ctrl-btn" onclick="recenterMapToFit()" title="Fit all rides on map">
+                                <svg class="icon" width="18" height="18"><use href="#icon-route"></use></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PROFILE VIEW -->
+                <div id="subViewProfile" class="profile-view-container" style="display: none;">
+                    <div class="profile-card">
+                        <div class="profile-header-banner">
+                            <div class="profile-large-avatar" id="profAvatar">K</div>
+                            <div class="profile-header-details">
+                                <h2 id="profFullName">Kavitha R</h2>
+                                <p id="profSubtitle">Computer Science and Engineering • Year 3</p>
+                                <div class="verified-pill">
+                                    <svg class="icon" width="14" height="14"><use href="#icon-shield-check"></use></svg>
+                                    <span>Verified Institutional Access (Easwari Engineering College)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="profile-grid-info">
+                            <div class="info-cell">
+                                <label>University Register Number</label>
+                                <span id="profRegNumber">310621104001</span>
+                            </div>
+                            <div class="info-cell">
+                                <label>Registered Mobile</label>
+                                <span id="profPhone">9876543210</span>
+                            </div>
+                            <div class="info-cell">
+                                <label>Department</label>
+                                <span id="profDept">Computer Science and Engineering</span>
+                            </div>
+                            <div class="info-cell">
+                                <label>Year of Study</label>
+                                <span id="profYear">3rd Year</span>
+                            </div>
+                        </div>
+
+                        <!-- Role Switcher Component -->
+                        <div class="role-switcher-card">
+                            <div>
+                                <h4 style="font-size: 14px; font-weight: 700;">Commute Role</h4>
+                                <p style="font-size: 12px; color: var(--text-muted);">Change how you participate in Campus Commute</p>
+                            </div>
+                            <div class="role-switch-buttons">
+                                <button class="role-btn" id="roleBtnRider" onclick="handleRoleUpdate('RIDER')">Passenger (Book Seats)</button>
+                                <button class="role-btn" id="roleBtnDriver" onclick="handleRoleUpdate('DRIVER')">Driver (Offer Rides)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OFFER RIDE VIEW (DRIVER) -->
+                <div id="subViewOfferRide" class="offer-ride-container" style="display: none;">
+                    <div class="offer-ride-card">
+                        <div class="offer-card-header">
+                            <div>
+                                <h2>
+                                    <svg class="icon" width="22" height="22" style="color:var(--primary);"><use href="#icon-car"></use></svg>
+                                    <span>Offer a Ride to Campus</span>
+                                </h2>
+                                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                                    Share your commute, reduce campus congestion, and split fuel costs transparently with verified peers.
+                                </p>
+                            </div>
+                            <span class="verified-pill">Driver Verified</span>
+                        </div>
+
+                        <form id="offerRideForm" onsubmit="handlePublishRide(event)">
+                            <!-- Vehicle Type -->
+                            <div class="form-group">
+                                <label style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; display: block;">Select Vehicle</label>
+                                <div class="vehicle-type-selector">
+                                    <div class="v-select-card active" id="vTypeCardCarpool" onclick="selectVehicleType('CARPOOL')">
+                                        <div class="v-select-icon">
+                                            <svg class="icon" width="22" height="22"><use href="#icon-car"></use></svg>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 14px; font-weight: 700;">Carpool (Car)</div>
+                                            <div style="font-size: 11px; color: var(--text-muted);">Offer up to 4 empty seats</div>
+                                        </div>
+                                    </div>
+                                    <div class="v-select-card" id="vTypeCardBikepool" onclick="selectVehicleType('BIKEPOOL')">
+                                        <div class="v-select-icon">
+                                            <svg class="icon" width="22" height="22"><use href="#icon-bike"></use></svg>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 14px; font-weight: 700;">Bike-pool (Two-Wheeler)</div>
+                                            <div style="font-size: 11px; color: var(--text-muted);">Offer 1 pillion seat</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="offerVehicleType" value="CARPOOL">
+                            </div>
+
+                            <!-- Route Details -->
+                            <div class="offer-form-grid" style="margin-top: 16px;">
+                                <div class="form-group">
+                                    <label>Pickup Location / Starting Point</label>
+                                    <div class="input-with-icon">
+                                        <span class="input-icon">
+                                            <svg class="icon" width="16" height="16"><use href="#icon-pin"></use></svg>
+                                        </span>
+                                        <input type="text" class="auth-input" id="offerPickup" placeholder="e.g. Porur Junction / Vadapalani" value="Porur Junction, Chennai" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Destination</label>
+                                    <div class="input-with-icon">
+                                        <span class="input-icon">
+                                            <svg class="icon" width="16" height="16"><use href="#icon-pin"></use></svg>
+                                        </span>
+                                        <input type="text" class="auth-input" id="offerDestination" value="Easwari Engineering College, Ramapuram" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vehicle Model & Seats -->
+                            <div class="offer-form-grid" style="margin-top: 12px;">
+                                <div class="form-group">
+                                    <label>Vehicle Name & Model</label>
+                                    <div class="input-with-icon">
+                                        <span class="input-icon">
+                                            <svg class="icon" width="16" height="16"><use href="#icon-car"></use></svg>
+                                        </span>
+                                        <input type="text" class="auth-input" id="offerVehicleModel" placeholder="e.g. Honda City / Yamaha RayZR" value="Maruti Swift • 18 km/l" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Vehicle Plate Number</label>
+                                    <div class="input-with-icon">
+                                        <span class="input-icon">
+                                            <svg class="icon" width="16" height="16"><use href="#icon-shield-check"></use></svg>
+                                        </span>
+                                        <input type="text" class="auth-input" id="offerVehiclePlate" placeholder="e.g. TN 09 BX 4521" value="TN 09 BX 4521" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Time & Seats -->
+                            <div class="offer-form-grid" style="margin-top: 12px;">
+                                <div class="form-group">
+                                    <label>Departure Date & Time</label>
+                                    <div class="input-with-icon">
+                                        <span class="input-icon">
+                                            <svg class="icon" width="16" height="16"><use href="#icon-clock"></use></svg>
+                                        </span>
+                                        <input type="text" class="auth-input" id="offerTime" value="Today, 08:30 AM" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Available Seats</label>
+                                    <div class="input-with-icon">
+                                        <span class="input-icon">
+                                            <svg class="icon" width="16" height="16"><use href="#icon-user"></use></svg>
+                                        </span>
+                                        <select class="auth-select" id="offerSeats">
+                                            <option value="1">1 Seat Available</option>
+                                            <option value="2" selected>2 Seats Available</option>
+                                            <option value="3">3 Seats Available</option>
+                                            <option value="4">4 Seats Available</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Commute Notes -->
+                            <div class="form-group" style="margin-top: 12px;">
+                                <label>Commute Notes (Optional)</label>
+                                <input type="text" class="auth-input" id="offerNotes" placeholder="e.g. AC carpool, waiting 5 mins at Porur signal, helmet provided">
+                            </div>
+
+                            <!-- Fuel Cost Disclaimer -->
+                            <div style="background: #f1f5f9; border-radius: var(--radius-md); padding: 12px 16px; margin-top: 16px; font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+                                <svg class="icon" width="18" height="18" style="color: #15803d; flex-shrink: 0;"><use href="#icon-fuel"></use></svg>
+                                <span><b>Fair Fuel Sharing:</b> Fuel expenses will be computed dynamically upon ride completion by the system based on actual distance traveled and vehicle mileage, split equally among occupants.</span>
+                            </div>
+
+                            <button type="submit" class="auth-submit-btn" style="margin-top: 20px;" id="btnPublishRide">
+                                Publish Campus Ride
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- MY OFFERED RIDES & REQUESTS VIEW (DRIVER) -->
+                <div id="subViewMyOfferedRides" class="offer-ride-container" style="display: none;">
+                    <div class="offer-ride-card">
+                        <div class="offer-card-header">
+                            <div>
+                                <h2>My Active Ride Offers</h2>
+                                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                                    Manage your offered commutes and respond to peer seat requests.
+                                </p>
+                            </div>
+                            <button class="btn btn-primary" onclick="showDashboardTab('offerRide')" style="font-size: 12px; padding: 6px 14px;">+ Offer New Ride</button>
+                        </div>
+
+                        <!-- Published Rides List -->
+                        <div id="driverActiveRidesList">
+                            <!-- Populated via JS -->
+                        </div>
+
+                        <!-- Incoming Passenger Requests -->
+                        <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                <h3 style="font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                                    <span>Incoming Passenger Seat Requests</span>
+                                    <span class="badge-count" id="pendingRequestsCount">1 Pending</span>
+                                </h3>
+                            </div>
+                            <div id="driverPassengerRequestsList">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MY BOOKINGS VIEW (PASSENGER) -->
+                <div id="subViewMyRides" class="offer-ride-container" style="display: none;">
+                    <div class="offer-ride-card">
+                        <div class="offer-card-header">
+                            <div>
+                                <h2>My Booked Rides</h2>
+                                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                                    Track your upcoming commutes and confirmed peer vehicles.
+                                </p>
+                            </div>
+                            <button class="btn btn-primary" onclick="showDashboardTab('findRides')" style="font-size: 12px; padding: 6px 14px;">Find Another Ride</button>
+                        </div>
+
+                        <div id="passengerBookingsList">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================================
+         AUTH MODAL (Reference Image 1)
+         ======================================================== -->
+    <div class="auth-overlay" id="authModal">
+        <div class="auth-container">
+            <!-- Left Banner with Image -->
+            <div class="auth-left">
+                <div class="auth-left-content">
+                    <h2>Same campus.<br>Shared journeys.</h2>
+                    <p>Join a trusted network of your college community.</p>
+                </div>
+
+                <div class="auth-left-badges">
+                    <div class="auth-badge-item">
+                        <svg class="icon" width="20" height="20" style="color:white;"><use href="#icon-shield-check"></use></svg>
+                        <span class="auth-badge-text">Verified<br>Access Only</span>
+                    </div>
+                    <div class="auth-badge-item">
+                        <svg class="icon" width="20" height="20" style="color:white;"><use href="#icon-lock"></use></svg>
+                        <span class="auth-badge-text">Your Data<br>Is Secure</span>
+                    </div>
+                    <div class="auth-badge-item">
+                        <svg class="icon" width="20" height="20" style="color:white;"><use href="#icon-leaf"></use></svg>
+                        <span class="auth-badge-text">A Greener<br>Tomorrow</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Form Section -->
+            <div class="auth-right">
+                <button class="auth-close-btn" onclick="closeAuthModal()">✕</button>
+
+                <div class="auth-header">
+                    <div class="auth-brand-row">
+                        <svg class="icon" width="16" height="16"><use href="#icon-car"></use></svg>
+                        <span>Campus Commute</span>
+                    </div>
+                    <h3 class="auth-heading" id="authHeading">
+                        <svg class="icon" width="22" height="22" style="color:var(--primary);"><use href="#icon-lock"></use></svg>
+                        <span>Create Your Account</span>
+                    </h3>
+                    <p class="auth-subhead" id="authSubhead">
+                        Join the walled garden. Only valid college members can register.
+                    </p>
+                </div>
+
+                <!-- Error / Success Alert -->
+                <div class="auth-alert alert-error" id="authAlertError"></div>
+                <div class="auth-alert alert-success" id="authAlertSuccess"></div>
+
+                <!-- SIGN UP FORM -->
+                <form class="auth-form" id="signupForm" onsubmit="event.preventDefault(); submitRegister();">
+                    <div class="form-group">
+                        <label>12-Digit University Register Number</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon">
+                                <svg class="icon" width="16" height="16"><use href="#icon-shield-check"></use></svg>
+                            </span>
+                            <input type="text" class="auth-input" id="regRegisterNo" placeholder="e.g. 310621104001" maxlength="12" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Official College Email (Optional)</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon">
+                                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                            </span>
+                            <input type="email" class="auth-input" id="regEmail" placeholder="e.g. name@easwari.ac.in">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon">
+                                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            </span>
+                            <input type="tel" class="auth-input" id="regPhone" placeholder="e.g. 9876543210" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Role</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon">
+                                <svg class="icon" width="16" height="16"><use href="#icon-user"></use></svg>
+                            </span>
+                            <select class="auth-select" id="regRole">
+                                <option value="RIDER">Rider (Passenger)</option>
+                                <option value="DRIVER">Driver (Vehicle Owner)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Create Password</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon">
+                                <svg class="icon" width="16" height="16"><use href="#icon-lock"></use></svg>
+                            </span>
+                            <input type="password" class="auth-input" id="regPassword" placeholder="Min 6 characters" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="auth-submit-btn" id="regSubmitBtn">Sign Up</button>
+
+                    <div class="auth-divider"><span>OR</span></div>
+                    <div class="auth-toggle-link">
+                        Already have an account? <a onclick="toggleAuthMode('login')">Login</a>
+                    </div>
+                </form>
+
+                <!-- LOGIN FORM -->
+                <form class="auth-form" id="loginForm" style="display: none;" onsubmit="event.preventDefault(); submitLogin();">
+                    <div class="form-group">
+                        <label>Registered Phone Number</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon">
+                                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            </span>
+                            <input type="tel" class="auth-input" id="loginPhone" placeholder="e.g. 9876543210" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon">
+                                <svg class="icon" width="16" height="16"><use href="#icon-lock"></use></svg>
+                            </span>
+                            <input type="password" class="auth-input" id="loginPassword" placeholder="Enter your password" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="auth-submit-btn" id="loginSubmitBtn">Log In</button>
+
+                    <div class="auth-divider"><span>OR</span></div>
+                    <div class="auth-toggle-link">
+                        Don't have an account yet? <a onclick="toggleAuthMode('signup')">Sign Up</a>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // State
+        let currentUser = null;
+        let accessToken = localStorage.getItem('cc_access_token') || '';
+        let refreshToken = localStorage.getItem('cc_refresh_token') || '';
+        let ridesMap = null;
+        let pickupCoords = [13.0500, 80.2120]; // Default Vadapalani
+        let dropCoords = [13.0315, 80.1804];   // Default EEC
+        let pickupMarker = null;
+        let dropMarker = null;
+        let routePolyline = null;
+        let userGpsCircle = null;
+        let mapPinDropMode = null; // null | 'PICKUP' | 'DROP'
+        let rideMarkersGroup = null;
+        let activeSelectedRideId = null;
+
+        // Transit Hubs & College Landmarks in Chennai
+        const CHENNAI_HUBS = [
+            { name: "Easwari Engineering College", area: "Ramapuram, Chennai", coords: [13.0315, 80.1804], tag: "Campus" },
+            { name: "Ramapuram Bus Stop", area: "Mount-Poonamallee Rd", coords: [13.0336, 80.1765], tag: "Near Campus" },
+            { name: "Porur Junction", area: "Porur, Chennai", coords: [13.0359, 80.1568], tag: "Transit Hub" },
+            { name: "Guindy Metro & Railway Station", area: "Guindy, Chennai", coords: [13.0067, 80.2023], tag: "Metro Station" },
+            { name: "Vadapalani Metro / Forum Mall", area: "Vadapalani, Chennai", coords: [13.0500, 80.2120], tag: "Metro Station" },
+            { name: "Koyambedu CMBT", area: "Koyambedu, Chennai", coords: [13.0694, 80.1948], tag: "Transit Hub" },
+            { name: "Ashok Nagar Metro", area: "Ashok Nagar, Chennai", coords: [13.0366, 80.2115], tag: "Metro Station" },
+            { name: "Alandur Metro Junction", area: "Alandur, Chennai", coords: [13.0044, 80.2015], tag: "Metro Station" },
+            { name: "Tambaram Railway Station", area: "Tambaram, Chennai", coords: [12.9249, 80.1000], tag: "South Transit" },
+            { name: "Velachery MRTS Station", area: "Velachery, Chennai", coords: [12.9815, 80.2212], tag: "Transit Hub" },
+            { name: "T. Nagar Panagal Park", area: "T. Nagar, Chennai", coords: [13.0418, 80.2341], tag: "Central Hub" },
+            { name: "Anna Nagar Roundtana", area: "Anna Nagar, Chennai", coords: [13.0850, 80.2100], tag: "North-West Hub" },
+            { name: "Saligramam", area: "Arcot Rd, Chennai", coords: [13.0450, 80.2010], tag: "Near Campus" },
+            { name: "Saidapet", area: "Anna Salai, Chennai", coords: [13.0210, 80.2230], tag: "Transit Hub" },
+            { name: "Chromepet", area: "GST Road, Chennai", coords: [12.9516, 80.1462], tag: "South Suburb" }
+        ];
+
+        // Sample Ride Listings (Campus Commute)
+        // Fuel cost is computed dynamically by the system upon ride completion based on distance & mileage.
+        const sampleRides = [
+            { 
+                id: 1, 
+                name: "Arjun S", 
+                type: "CARPOOL", 
+                vehicle: "Honda City • 14 km/l",
+                origin: "Vadapalani", 
+                dest: "Easwari Engineering College", 
+                distanceKm: 8.2,
+                time: "Today, 08:15 AM", 
+                seats: 2, 
+                avatar: "AS", 
+                lat: 13.0500, 
+                lng: 80.2120 
+            },
+            { 
+                id: 2, 
+                name: "Sneha R", 
+                type: "BIKEPOOL", 
+                vehicle: "Yamaha RayZR • 50 km/l",
+                origin: "Saligramam", 
+                dest: "Easwari Engineering College", 
+                distanceKm: 4.8,
+                time: "Today, 08:30 AM", 
+                seats: 1, 
+                avatar: "SR", 
+                lat: 13.0450, 
+                lng: 80.2010 
+            },
+            { 
+                id: 3, 
+                name: "Karthik M", 
+                type: "CARPOOL", 
+                vehicle: "Maruti Swift • 18 km/l",
+                origin: "Anna Nagar", 
+                dest: "Easwari Engineering College", 
+                distanceKm: 12.4,
+                time: "Today, 08:45 AM", 
+                seats: 3, 
+                avatar: "KM", 
+                lat: 13.0850, 
+                lng: 80.2100 
+            },
+            { 
+                id: 4, 
+                name: "Priya V", 
+                type: "BIKEPOOL", 
+                vehicle: "TVS Jupiter • 45 km/l",
+                origin: "Porur Junction", 
+                dest: "Easwari Engineering College", 
+                distanceKm: 3.2,
+                time: "Today, 09:00 AM", 
+                seats: 1, 
+                avatar: "PV", 
+                lat: 13.0359, 
+                lng: 80.1568 
+            },
+            { 
+                id: 5, 
+                name: "Vigneshwaran K", 
+                type: "CARPOOL", 
+                vehicle: "Hyundai i20 • 16 km/l",
+                origin: "Guindy Metro", 
+                dest: "Easwari Engineering College", 
+                distanceKm: 6.9,
+                time: "Today, 08:20 AM", 
+                seats: 2, 
+                avatar: "VK", 
+                lat: 13.0067, 
+                lng: 80.2023 
+            },
+            { 
+                id: 6, 
+                name: "Rohan Balaji", 
+                type: "CARPOOL", 
+                vehicle: "Tata Nexon • 17 km/l",
+                origin: "Koyambedu CMBT", 
+                dest: "Easwari Engineering College", 
+                distanceKm: 9.8,
+                time: "Today, 08:10 AM", 
+                seats: 3, 
+                avatar: "RB", 
+                lat: 13.0694, 
+                lng: 80.1948 
+            }
+        ];
+
+        let activeCommuteRole = 'RIDER';
+        let driverRides = [
+            {
+                id: 101,
+                origin: "Porur Junction",
+                dest: "Easwari Engineering College, Ramapuram",
+                time: "Today, 08:30 AM",
+                vehicle: "Maruti Swift • 18 km/l (TN 09 BX 4521)",
+                type: "CARPOOL",
+                seatsAvailable: 2,
+                totalSeats: 3,
+                status: "ACTIVE"
+            }
+        ];
+        let passengerRequests = [
+            {
+                id: 201,
+                passengerName: "Arun Kumar S",
+                dept: "Information Technology",
+                year: 4,
+                pickup: "Porur Signal Junction",
+                time: "08:30 AM Commute",
+                status: "PENDING"
+            }
+        ];
+        let passengerBookings = [
+            {
+                id: 301,
+                driverName: "Arjun S",
+                vehicle: "Honda City • 14 km/l",
+                type: "CARPOOL",
+                route: "Vadapalani Metro → EEC Campus",
+                time: "Today, 08:15 AM",
+                status: "Confirmed",
+                seatsBooked: 1
+            }
+        ];
+
+        // Init on load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderRides(sampleRides);
+            setupLocationAutocomplete();
+
+            if (accessToken) {
+                verifyAndLoadUser();
+            } else {
+                applyRoleToUI('RIDER');
+            }
+        });
+
+        // Navigation
+        function navigateTo(view) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            if (view === 'landing') {
+                document.getElementById('landingView').classList.add('active');
+            } else if (view === 'dashboard') {
+                document.getElementById('dashboardView').classList.add('active');
+                if (activeCommuteRole === 'DRIVER') {
+                    showDashboardTab('offerRide');
+                } else {
+                    showDashboardTab('findRides');
+                }
+            }
+        }
+
+        function handleBrandClick() {
+            if (currentUser) {
+                navigateTo('dashboard');
+                if (activeCommuteRole === 'DRIVER') {
+                    showDashboardTab('offerRide');
+                } else {
+                    showDashboardTab('findRides');
+                }
+            } else {
+                navigateTo('landing');
+            }
+        }
+
+        function handleFindRidesClick() {
+            if (currentUser) {
+                navigateTo('dashboard');
+                if (activeCommuteRole === 'DRIVER') {
+                    showDashboardTab('offerRide');
+                } else {
+                    showDashboardTab('findRides');
+                }
+            } else {
+                openAuthModal('signup');
+            }
+        }
+
+        function showDashboardTab(tab) {
+            // Guard: ensure user in Driver Mode is directed to Driver views, not passenger Find Rides
+            if (activeCommuteRole === 'DRIVER' && tab === 'findRides') {
+                tab = 'offerRide';
+            } else if (activeCommuteRole === 'RIDER' && (tab === 'offerRide' || tab === 'myOfferedRides')) {
+                tab = 'findRides';
+            }
+
+            document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+            ['subViewFindRides', 'subViewProfile', 'subViewMyRides', 'subViewOfferRide', 'subViewMyOfferedRides'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+
+            const activeBtn = document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            if (tab === 'findRides') {
+                document.getElementById('subViewFindRides').style.display = 'grid';
+                setTimeout(() => { initRidesMap(); }, 100);
+            } else if (tab === 'offerRide') {
+                document.getElementById('subViewOfferRide').style.display = 'block';
+            } else if (tab === 'myOfferedRides') {
+                document.getElementById('subViewMyOfferedRides').style.display = 'block';
+                renderDriverOfferedRides();
+            } else if (tab === 'profile') {
+                document.getElementById('subViewProfile').style.display = 'block';
+                updateProfileView();
+            } else if (tab === 'myRides') {
+                document.getElementById('subViewMyRides').style.display = 'block';
+                renderPassengerBookings();
+            }
+        }
+
+        // Auth Modal Controls
+        function openAuthModal(mode) {
+            hideAlerts();
+            document.getElementById('authModal').classList.add('active');
+            toggleAuthMode(mode);
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+            hideAlerts();
+        }
+
+        function toggleAuthMode(mode) {
+            hideAlerts();
+            const signupForm = document.getElementById('signupForm');
+            const loginForm = document.getElementById('loginForm');
+            const heading = document.getElementById('authHeading');
+            const subhead = document.getElementById('authSubhead');
+
+            if (mode === 'signup') {
+                signupForm.style.display = 'flex';
+                loginForm.style.display = 'none';
+                heading.innerHTML = `<svg class="icon" width="22" height="22" style="color:var(--primary);"><use href="#icon-lock"></use></svg> <span>Create Your Account</span>`;
+                subhead.textContent = `Join the walled garden. Only valid college members can register.`;
+            } else {
+                signupForm.style.display = 'none';
+                loginForm.style.display = 'flex';
+                heading.innerHTML = `<svg class="icon" width="22" height="22" style="color:var(--primary);"><use href="#icon-lock"></use></svg> <span>Welcome Back</span>`;
+                subhead.textContent = `Log in with your verified college registered phone.`;
+            }
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('authAlertError');
+            el.textContent = msg;
+            el.style.display = 'block';
+            document.getElementById('authAlertSuccess').style.display = 'none';
+        }
+
+        function showSuccess(msg) {
+            const el = document.getElementById('authAlertSuccess');
+            el.textContent = msg;
+            el.style.display = 'block';
+            document.getElementById('authAlertError').style.display = 'none';
+        }
+
+        function hideAlerts() {
+            document.getElementById('authAlertError').style.display = 'none';
+            document.getElementById('authAlertSuccess').style.display = 'none';
+        }
+
+        // Real Backend Register API Call
+        async function submitRegister() {
+            hideAlerts();
+            const regNo = document.getElementById('regRegisterNo').value.trim();
+            const phone = document.getElementById('regPhone').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const role = document.getElementById('regRole').value;
+            const btn = document.getElementById('regSubmitBtn');
+
+            btn.disabled = true;
+            btn.textContent = "Verifying Institution Records...";
+
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ registerNumber: regNo, phoneNumber: phone, password: password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    showSuccess(`Account verified! Welcome, ${data.user.fullName || 'Student'}`);
+                    accessToken = data.accessToken;
+                    refreshToken = data.refreshToken;
+                    localStorage.setItem('cc_access_token', accessToken);
+                    localStorage.setItem('cc_refresh_token', refreshToken);
+                    currentUser = data.user;
+
+                    // If user chose DRIVER during signup, update role
+                    if (role !== 'RIDER') {
+                        await fetch('/api/users/me/role', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+                            body: JSON.stringify({ role: role })
+                        });
+                        currentUser.role = role;
+                    }
+
+                    setTimeout(() => {
+                        closeAuthModal();
+                        setUserAuthenticated(currentUser);
+                        navigateTo('dashboard');
+                    }, 1000);
+                } else {
+                    showError(data.message || 'Registration failed. Please check your credentials.');
+                }
+            } catch (err) {
+                showError('Could not reach backend service: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Sign Up";
+            }
+        }
+
+        // Real Backend Login API Call
+        async function submitLogin() {
+            hideAlerts();
+            const phone = document.getElementById('loginPhone').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('loginSubmitBtn');
+
+            btn.disabled = true;
+            btn.textContent = "Authenticating...";
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber: phone, password: password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    showSuccess(`Welcome back!`);
+                    accessToken = data.accessToken;
+                    refreshToken = data.refreshToken;
+                    localStorage.setItem('cc_access_token', accessToken);
+                    localStorage.setItem('cc_refresh_token', refreshToken);
+                    currentUser = data.user;
+
+                    setTimeout(() => {
+                        closeAuthModal();
+                        setUserAuthenticated(currentUser);
+                        navigateTo('dashboard');
+                    }, 600);
+                } else {
+                    showError(data.message || 'Invalid mobile number or password.');
+                }
+            } catch (err) {
+                showError('Connection error: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Log In";
+            }
+        }
+
+        // Verify existing token and load profile
+        async function verifyAndLoadUser() {
+            try {
+                const res = await fetch('/api/users/me', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                if (res.ok) {
+                    currentUser = await res.json();
+                    setUserAuthenticated(currentUser);
+                } else {
+                    handleLogout();
+                }
+            } catch (e) {
+                handleLogout();
+            }
+        }
+
+        function setUserAuthenticated(user) {
+            document.getElementById('publicNav').style.display = 'none';
+            document.getElementById('publicActions').style.display = 'none';
+            document.getElementById('authActions').style.display = 'flex';
+
+            const name = user.fullName || 'Student';
+            document.getElementById('navUserName').textContent = name;
+            document.getElementById('navAvatar').textContent = name.charAt(0).toUpperCase();
+
+            updateProfileView();
+            applyRoleToUI(user.role || 'RIDER');
+        }
+
+        function handleLogout() {
+            accessToken = '';
+            refreshToken = '';
+            currentUser = null;
+            localStorage.removeItem('cc_access_token');
+            localStorage.removeItem('cc_refresh_token');
+
+            document.getElementById('publicNav').style.display = 'flex';
+            document.getElementById('publicActions').style.display = 'flex';
+            document.getElementById('authActions').style.display = 'none';
+
+            navigateTo('landing');
+        }
+
+        function updateProfileView() {
+            if (!currentUser) return;
+            const name = currentUser.fullName || 'Verified Student';
+            document.getElementById('profAvatar').textContent = name.charAt(0).toUpperCase();
+            document.getElementById('profFullName').textContent = name;
+            document.getElementById('profSubtitle').textContent = `${currentUser.department || 'Department'} • Year ${currentUser.yearOfStudy || 1}`;
+            document.getElementById('profRegNumber').textContent = currentUser.registerNumber || '-';
+            document.getElementById('profPhone').textContent = currentUser.phoneNumber || '-';
+            document.getElementById('profDept').textContent = currentUser.department || '-';
+            document.getElementById('profYear').textContent = currentUser.yearOfStudy ? `${currentUser.yearOfStudy}th Year` : '-';
+
+            const isDriver = (currentUser.role || activeCommuteRole) === 'DRIVER';
+            const riderBtn = document.getElementById('roleBtnRider');
+            const driverBtn = document.getElementById('roleBtnDriver');
+            if (riderBtn) riderBtn.classList.toggle('active', !isDriver);
+            if (driverBtn) driverBtn.classList.toggle('active', isDriver);
+        }
+
+        async function handleRoleUpdate(newRole) {
+            activeCommuteRole = newRole;
+            if (!accessToken) {
+                applyRoleToUI(newRole);
+                showToast(`Switched to ${newRole === 'DRIVER' ? 'Driver Mode (Offer Rides)' : 'Passenger Mode'}!`, 'success');
+                if (newRole === 'DRIVER') {
+                    showDashboardTab('offerRide');
+                } else {
+                    showDashboardTab('findRides');
+                }
+                return;
+            }
+            try {
+                const res = await fetch('/api/users/me/role', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify({ role: newRole })
+                });
+
+                if (res.ok) {
+                    currentUser = await res.json();
+                } else {
+                    if (currentUser) currentUser.role = newRole;
+                }
+            } catch (err) {
+                console.warn('Backend role update fallback:', err);
+                if (currentUser) currentUser.role = newRole;
+            }
+            applyRoleToUI(newRole);
+            updateProfileView();
+            showToast(`Switched to ${newRole === 'DRIVER' ? 'Driver Mode (Vehicle Owner)' : 'Passenger Mode'}!`, 'success');
+            if (newRole === 'DRIVER') {
+                showDashboardTab('offerRide');
+            } else {
+                showDashboardTab('findRides');
+            }
+        }
+
+        // Render Available Rides (Image 3)
+        // CRITICAL REQUIREMENT: Do NOT display price when booking.
+        // Prices are dynamically computed after ride completion.
+        function renderRides(rides) {
+            const container = document.getElementById('ridesListContainer');
+            container.innerHTML = '';
+
+            rides.forEach(ride => {
+                const card = document.createElement('div');
+                card.className = 'ride-card';
+                card.innerHTML = `
+                    <div class="driver-info">
+                        <div class="driver-avatar">${ride.avatar}</div>
+                        <div class="driver-meta">
+                            <h4>
+                                ${ride.name}
+                                <span class="verified-badge" title="Verified EEC Student">
+                                    <svg class="icon" width="14" height="14" style="color:var(--primary);"><use href="#icon-shield-check"></use></svg>
+                                </span>
+                                <span class="ride-type-tag">${ride.type === 'CARPOOL' ? 'Carpool' : 'Bike-pool'}</span>
+                            </h4>
+                            <div class="driver-route">From ${ride.origin} → To ${ride.dest} (${ride.distanceKm} km)</div>
+                            <div class="driver-time">
+                                <svg class="icon" width="12" height="12"><use href="#icon-clock"></use></svg>
+                                <span>${ride.time}</span>
+                            </div>
+                            <div class="driver-vehicle">${ride.vehicle}</div>
+                        </div>
+                    </div>
+                    <div class="ride-price-action">
+                        <div class="cost-split-badge">
+                            <div>Fair Fuel Split</div>
+                            <div class="cost-split-sub">Calculated on completion</div>
+                        </div>
+                        <div class="seat-count">${ride.seats} Seat${ride.seats > 1 ? 's' : ''} Left</div>
+                        <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; margin-top: 4px;" onclick="bookRide(${ride.id}, '${ride.name}', '${ride.type}')">Book Seat</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterRides(type, btn) {
+            document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const filtered = type === 'ALL' ? sampleRides : sampleRides.filter(r => r.type === type);
+            renderRides(filtered);
+            renderMapRides(filtered);
+        }
+
+        function bookRide(id, driverName, rideType) {
+            if (!currentUser) {
+                openAuthModal('signup');
+                return;
+            }
+            const ride = sampleRides.find(r => r.id === id);
+            if (ride && ride.seats > 0) {
+                ride.seats--;
+            }
+            passengerBookings.unshift({
+                id: Date.now(),
+                driverName: driverName,
+                vehicle: ride ? ride.vehicle : (rideType === 'CARPOOL' ? 'Car' : 'Two-Wheeler'),
+                type: rideType,
+                route: ride ? `${ride.origin} → ${ride.dest}` : 'Pickup Location → EEC Campus',
+                time: ride ? ride.time : 'Today, Commute',
+                status: 'Confirmed',
+                seatsBooked: 1
+            });
+            renderRides(sampleRides);
+            if (ridesMap) renderMapRides(sampleRides);
+            showToast(`Seat booked with ${driverName}! Added to My Bookings.`, 'success');
+        }
+
+        // ==========================================
+        // LEAFLET MAP & RIDE-HAILING GEOLOCATION LOGIC
+        // ==========================================
+        const EEC_COORDS = [13.0315, 80.1804]; // Easwari Engineering College coordinates
+
+        function initRidesMap() {
+            if (ridesMap) {
+                ridesMap.invalidateSize();
+                return;
+            }
+
+            ridesMap = L.map('ridesMap').setView(EEC_COORDS, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(ridesMap);
+
+            createPickupMarker(pickupCoords);
+            createDropMarker(dropCoords);
+            updateRouteAndEstimates();
+
+            // Layer group for nearby rides
+            rideMarkersGroup = L.layerGroup().addTo(ridesMap);
+            renderMapRides(sampleRides);
+
+            // Click listener for Pin Drop mode
+            ridesMap.on('click', (e) => {
+                if (!mapPinDropMode) return;
+
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                if (mapPinDropMode === 'PICKUP') {
+                    pickupCoords = [lat, lng];
+                    if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
+                    reverseGeocode(lat, lng, (addr) => {
+                        document.getElementById('dashFrom').value = addr;
+                        showToast(`Pickup location set: ${addr}`, 'success');
+                    });
+                } else if (mapPinDropMode === 'DROP') {
+                    dropCoords = [lat, lng];
+                    if (dropMarker) dropMarker.setLatLng(dropCoords);
+                    reverseGeocode(lat, lng, (addr) => {
+                        document.getElementById('dashTo').value = addr;
+                        showToast(`Destination set: ${addr}`, 'success');
+                    });
+                }
+                updateRouteAndEstimates();
+                exitMapPinMode();
+            });
+        }
+
+        function createPickupMarker(coords) {
+            const pickupIcon = L.divIcon({
+                className: 'custom-pin-pickup-vertical',
+                html: `
+                    <div class="map-vertical-pin" title="Drag to adjust Pickup location">
+                        <div class="pin-tag pickup-tag">Pickup</div>
+                        <svg width="34" height="46" viewBox="0 0 34 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17 0C7.611 0 0 7.611 0 17C0 29.5 17 46 17 46C17 46 34 29.5 34 17C34 7.611 26.389 0 17 0Z" fill="#16a34a"/>
+                            <path d="M17 1C8.163 1 1 8.163 1 17C1 28.6 16.5 44.5 17 45C17.5 44.5 33 28.6 33 17C33 8.163 25.837 1 17 1Z" stroke="white" stroke-width="2"/>
+                            <circle cx="17" cy="17" r="7" fill="white"/>
+                            <circle cx="17" cy="17" r="4" fill="#16a34a"/>
+                        </svg>
+                        <div class="pin-shadow"></div>
+                    </div>
+                `,
+                iconSize: [34, 46],
+                iconAnchor: [17, 46]
+            });
+
+            if (pickupMarker) {
+                pickupMarker.setLatLng(coords);
+                return;
+            }
+
+            pickupMarker = L.marker(coords, { icon: pickupIcon, draggable: true }).addTo(ridesMap);
+            pickupMarker.on('dragend', (e) => {
+                const pos = e.target.getLatLng();
+                pickupCoords = [pos.lat, pos.lng];
+                updateRouteAndEstimates();
+                reverseGeocode(pos.lat, pos.lng, (addr) => {
+                    document.getElementById('dashFrom').value = addr;
+                    showToast(`Pickup moved: ${addr}`, 'info');
+                });
+            });
+        }
+
+        function createDropMarker(coords) {
+            const dropIcon = L.divIcon({
+                className: 'custom-pin-drop-vertical',
+                html: `
+                    <div class="map-vertical-pin" title="Drag to adjust Destination location">
+                        <div class="pin-tag drop-tag">EEC Drop</div>
+                        <svg width="34" height="46" viewBox="0 0 34 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17 0C7.611 0 0 7.611 0 17C0 29.5 17 46 17 46C17 46 34 29.5 34 17C34 7.611 26.389 0 17 0Z" fill="#dc2626"/>
+                            <path d="M17 1C8.163 1 1 8.163 1 17C1 28.6 16.5 44.5 17 45C17.5 44.5 33 28.6 33 17C33 8.163 25.837 1 17 1Z" stroke="white" stroke-width="2"/>
+                            <circle cx="17" cy="17" r="7" fill="white"/>
+                            <circle cx="17" cy="17" r="4" fill="#dc2626"/>
+                        </svg>
+                        <div class="pin-shadow"></div>
+                    </div>
+                `,
+                iconSize: [34, 46],
+                iconAnchor: [17, 46]
+            });
+
+            if (dropMarker) {
+                dropMarker.setLatLng(coords);
+                return;
+            }
+
+            dropMarker = L.marker(coords, { icon: dropIcon, draggable: true }).addTo(ridesMap);
+            dropMarker.on('dragend', (e) => {
+                const pos = e.target.getLatLng();
+                dropCoords = [pos.lat, pos.lng];
+                updateRouteAndEstimates();
+                reverseGeocode(pos.lat, pos.lng, (addr) => {
+                    document.getElementById('dashTo').value = addr;
+                    showToast(`Destination moved: ${addr}`, 'info');
+                });
+            });
+        }
+
+        function updateRouteAndEstimates() {
+            if (!pickupCoords || !dropCoords) return;
+
+            const crowKm = getHaversineDistanceKm(pickupCoords[0], pickupCoords[1], dropCoords[0], dropCoords[1]);
+            const roadKm = Math.max(0.6, crowKm * 1.25);
+            const estMinLow = Math.max(3, Math.round(roadKm * 2.2));
+            const estMinHigh = Math.max(5, Math.round(roadKm * 2.8));
+
+            const distEl = document.getElementById('tripDistanceText');
+            const durEl = document.getElementById('tripDurationText');
+            if (distEl) distEl.textContent = `Distance: ${roadKm.toFixed(1)} km`;
+            if (durEl) durEl.textContent = `~${estMinLow} - ${estMinHigh} mins`;
+
+            if (ridesMap) {
+                if (routePolyline) {
+                    ridesMap.removeLayer(routePolyline);
+                }
+                routePolyline = L.polyline([pickupCoords, dropCoords], {
+                    color: '#2563eb',
+                    weight: 4,
+                    opacity: 0.85,
+                    dashArray: '6, 8',
+                    lineCap: 'round'
+                }).addTo(ridesMap);
+            }
+        }
+
+        function getHaversineDistanceKm(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function reverseGeocode(lat, lng, callback) {
+            let nearest = null;
+            let minDist = Infinity;
+            CHENNAI_HUBS.forEach(hub => {
+                const d = getHaversineDistanceKm(lat, lng, hub.coords[0], hub.coords[1]);
+                if (d < minDist) {
+                    minDist = d;
+                    nearest = hub;
+                }
+            });
+
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+                headers: { 'Accept-Language': 'en' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.address) {
+                    const a = data.address;
+                    const main = a.neighbourhood || a.suburb || a.residential || a.road || a.quarter || a.city_district || '';
+                    const city = a.city || a.town || 'Chennai';
+                    const readable = main ? `${main}, ${city}` : (data.display_name.split(',').slice(0, 2).join(',') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                    callback(readable);
+                } else if (nearest && minDist < 2.5) {
+                    callback(`${nearest.name}, ${nearest.area}`);
+                } else {
+                    callback(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                }
+            })
+            .catch(() => {
+                if (nearest && minDist < 2.5) {
+                    callback(`${nearest.name}, ${nearest.area}`);
+                } else {
+                    callback(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                }
+            });
+        }
+
+        function handleUseGpsLocation() {
+            const btn = document.getElementById('btnGpsLocate');
+            if (!navigator.geolocation) {
+                showToast('Geolocation is not supported by your browser.', 'error');
+                return;
+            }
+
+            if (btn) {
+                btn.classList.add('locating');
+                const span = btn.querySelector('span');
+                if (span) span.textContent = 'Locating...';
+            }
+            showToast('Acquiring device GPS coordinates...', 'info');
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    if (btn) {
+                        btn.classList.remove('locating');
+                        const span = btn.querySelector('span');
+                        if (span) span.textContent = 'GPS';
+                    }
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    const acc = pos.coords.accuracy || 50;
+
+                    pickupCoords = [lat, lng];
+
+                    if (ridesMap) {
+                        if (userGpsCircle) ridesMap.removeLayer(userGpsCircle);
+                        userGpsCircle = L.circle([lat, lng], {
+                            radius: Math.min(acc, 300),
+                            color: '#2563eb',
+                            fillColor: '#3b82f6',
+                            fillOpacity: 0.15,
+                            weight: 1.5
+                        }).addTo(ridesMap);
+
+                        createPickupMarker(pickupCoords);
+                        ridesMap.flyTo(pickupCoords, 14, { duration: 1.2 });
+                    }
+
+                    updateRouteAndEstimates();
+
+                    document.getElementById('dashFrom').value = 'Detecting address...';
+                    reverseGeocode(lat, lng, (addr) => {
+                        document.getElementById('dashFrom').value = addr;
+                        showToast(`GPS Pickup set: ${addr}`, 'success');
+                    });
+                },
+                (err) => {
+                    if (btn) {
+                        btn.classList.remove('locating');
+                        const span = btn.querySelector('span');
+                        if (span) span.textContent = 'GPS';
+                    }
+                    console.warn("GPS error:", err);
+                    let msg = "Could not fetch GPS. ";
+                    if (err.code === 1) msg += "Permission denied. You can tap 'Pin' to drop a marker on map.";
+                    else if (err.code === 2) msg += "Position unavailable. Please pick location on map.";
+                    else msg += "Request timed out.";
+                    showToast(msg, 'warning');
+                },
+                { enableHighAccuracy: true, timeout: 9000, maximumAge: 10000 }
+            );
+        }
+
+        function toggleMapPinMode(mode) {
+            const mapEl = document.getElementById('ridesMap');
+            const banner = document.getElementById('mapPinDropBanner');
+            const bannerText = document.getElementById('mapPinDropModeText');
+            const btnPickup = document.getElementById('btnDropPickupPin');
+            const btnDrop = document.getElementById('btnDropDestPin');
+            const pickupRow = document.getElementById('pickupFieldRow');
+            const dropRow = document.getElementById('dropFieldRow');
+
+            if (mapPinDropMode === mode) {
+                exitMapPinMode();
+                return;
+            }
+
+            mapPinDropMode = mode;
+            if (mapEl) mapEl.classList.add('crosshair-cursor');
+            if (banner) banner.style.display = 'flex';
+
+            if (mode === 'PICKUP') {
+                if (bannerText) bannerText.textContent = '📍 Tap anywhere on map to set Pickup (or drag green pin)';
+                if (btnPickup) btnPickup.classList.add('active');
+                if (btnDrop) btnDrop.classList.remove('active');
+                if (pickupRow) pickupRow.classList.add('active-pin-mode');
+                if (dropRow) dropRow.classList.remove('active-pin-mode');
+                showToast('Tap on the map to set your Pickup location', 'info');
+            } else {
+                if (bannerText) bannerText.textContent = '🏁 Tap anywhere on map to set Destination (or drag red pin)';
+                if (btnDrop) btnDrop.classList.add('active');
+                if (btnPickup) btnPickup.classList.remove('active');
+                if (dropRow) dropRow.classList.add('active-pin-mode');
+                if (pickupRow) pickupRow.classList.remove('active-pin-mode');
+                showToast('Tap on the map to set your Destination location', 'info');
+            }
+        }
+
+        function exitMapPinMode() {
+            mapPinDropMode = null;
+            const mapEl = document.getElementById('ridesMap');
+            const banner = document.getElementById('mapPinDropBanner');
+            const btnPickup = document.getElementById('btnDropPickupPin');
+            const btnDrop = document.getElementById('btnDropDestPin');
+            const pickupRow = document.getElementById('pickupFieldRow');
+            const dropRow = document.getElementById('dropFieldRow');
+
+            if (mapEl) mapEl.classList.remove('crosshair-cursor');
+            if (banner) banner.style.display = 'none';
+            if (btnPickup) btnPickup.classList.remove('active');
+            if (btnDrop) btnDrop.classList.remove('active');
+            if (pickupRow) pickupRow.classList.remove('active-pin-mode');
+            if (dropRow) dropRow.classList.remove('active-pin-mode');
+        }
+
+        function swapLocations() {
+            const fromInput = document.getElementById('dashFrom');
+            const toInput = document.getElementById('dashTo');
+            const tempVal = fromInput.value;
+            fromInput.value = toInput.value;
+            toInput.value = tempVal;
+
+            const tempCoords = [...pickupCoords];
+            pickupCoords = [...dropCoords];
+            dropCoords = tempCoords;
+
+            if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
+            if (dropMarker) dropMarker.setLatLng(dropCoords);
+
+            updateRouteAndEstimates();
+            showToast('Swapped Pickup and Destination', 'info');
+        }
+
+        function setQuickHub(name, coords, target) {
+            if (target === 'DROP') {
+                dropCoords = [...coords];
+                document.getElementById('dashTo').value = name;
+                if (dropMarker) dropMarker.setLatLng(dropCoords);
+            } else {
+                pickupCoords = [...coords];
+                document.getElementById('dashFrom').value = name;
+                if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
+            }
+            updateRouteAndEstimates();
+            if (ridesMap) ridesMap.panTo(coords);
+            showToast(`${target === 'DROP' ? 'Destination' : 'Pickup'} set to ${name}`, 'success');
+        }
+
+        function renderMapRides(ridesToRender) {
+            if (!rideMarkersGroup) return;
+            rideMarkersGroup.clearLayers();
+
+            ridesToRender.forEach(r => {
+                const isCarpool = r.type === 'CARPOOL';
+                const vIcon = L.divIcon({
+                    className: 'custom-vehicle-div-icon',
+                    html: `
+                        <div class="vehicle-marker-icon ${r.id === activeSelectedRideId ? 'active-ride' : ''}" id="vMarker_${r.id}">
+                            <div class="v-badge ${isCarpool ? 'carpool' : 'bikepool'}">${r.avatar}</div>
+                            <div class="v-info">${r.name.split(' ')[0]} • ${isCarpool ? 'Car' : 'Bike'}</div>
+                        </div>
+                    `,
+                    iconSize: [100, 30],
+                    iconAnchor: [50, 15]
+                });
+
+                const marker = L.marker([r.lat, r.lng], { icon: vIcon });
+                const popupHtml = `
+                    <div class="popup-ride-card">
+                        <div class="popup-driver-row">
+                            <div class="popup-driver-avatar">${r.avatar}</div>
+                            <div class="popup-driver-meta">
+                                <h5>${r.name} <svg class="icon" width="13" height="13" style="color:var(--primary);"><use href="#icon-shield-check"></use></svg></h5>
+                                <p>${r.vehicle}</p>
+                            </div>
+                        </div>
+                        <div class="popup-route-info">
+                            <div><b>From:</b> ${r.origin}</div>
+                            <div><b>To:</b> ${r.dest} (${r.distanceKm} km)</div>
+                            <div><b>Departure:</b> ${r.time}</div>
+                            <div><b>Seats:</b> ${r.seats} left</div>
+                        </div>
+                        <button class="popup-book-btn" onclick="bookRide(${r.id}, '${r.name}', '${r.type}')">Book Seat</button>
+                    </div>
+                `;
+                marker.bindPopup(popupHtml);
+                marker.on('click', () => {
+                    activeSelectedRideId = r.id;
+                    highlightRideCard(r.id);
+                });
+                rideMarkersGroup.addLayer(marker);
+            });
+
+            const countEl = document.getElementById('tripNearbyRidesCount');
+            if (countEl) countEl.textContent = `${ridesToRender.length} rides nearby`;
+        }
+
+        function highlightRideCard(rideId) {
+            document.querySelectorAll('.ride-card').forEach(c => c.style.borderColor = 'var(--border-color)');
+            const targetCard = document.getElementById(`rideCard_${rideId}`);
+            if (targetCard) {
+                targetCard.style.borderColor = 'var(--primary)';
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function recenterMapToFit() {
+            if (!ridesMap) return;
+            const points = [pickupCoords, dropCoords];
+            sampleRides.forEach(r => points.push([r.lat, r.lng]));
+            ridesMap.fitBounds(L.latLngBounds(points), { padding: [50, 50] });
+            showToast('Map centered to fit all available rides', 'info');
+        }
+
+        function setupLocationAutocomplete() {
+            const fromInput = document.getElementById('dashFrom');
+            const toInput = document.getElementById('dashTo');
+            const dropdown = document.getElementById('locationSuggestions');
+
+            function handleInput(inputEl, targetField) {
+                const query = inputEl.value.trim().toLowerCase();
+                if (query.length < 2) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                const matches = CHENNAI_HUBS.filter(h => 
+                    h.name.toLowerCase().includes(query) || h.area.toLowerCase().includes(query)
+                );
+
+                if (matches.length === 0) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                dropdown.innerHTML = '';
+                matches.slice(0, 5).forEach(hub => {
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item';
+                    item.innerHTML = `
+                        <div class="sugg-main">
+                            <svg class="icon" width="14" height="14" style="color:var(--primary);"><use href="#icon-pin"></use></svg>
+                            <div>
+                                <div>${hub.name}</div>
+                                <div style="font-size:10px; color:var(--text-muted);">${hub.area}</div>
+                            </div>
+                        </div>
+                        <span class="sugg-dist">${hub.tag}</span>
+                    `;
+                    item.onclick = () => {
+                        inputEl.value = `${hub.name}, ${hub.area}`;
+                        dropdown.style.display = 'none';
+                        setQuickHub(`${hub.name}, ${hub.area}`, hub.coords, targetField);
+                    };
+                    dropdown.appendChild(item);
+                });
+                dropdown.style.display = 'block';
+            }
+
+            if (fromInput) fromInput.addEventListener('input', () => handleInput(fromInput, 'PICKUP'));
+            if (toInput) toInput.addEventListener('input', () => handleInput(toInput, 'DROP'));
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.location-picker-card')) {
+                    if (dropdown) dropdown.style.display = 'none';
+                }
+            });
+        }
+
+        function showToast(msg, type = 'info') {
+            let toast = document.getElementById('globalToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'globalToast';
+                toast.className = 'toast-notification';
+                document.body.appendChild(toast);
+            }
+            toast.className = `toast-notification ${type} show`;
+            toast.textContent = msg;
+            clearTimeout(toast.timer);
+            toast.timer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        // ==========================================
+        // COMMUTER ROLE & DRIVER DASHBOARD LOGIC
+        // ==========================================
+        function applyRoleToUI(role) {
+            activeCommuteRole = role;
+            const isDriver = (role === 'DRIVER');
+
+            // 1. Update Mode Banner at top of dashboard
+            const badgeText = document.getElementById('roleBadgeText');
+            const badgeSub = document.getElementById('roleBadgeSubtitle');
+            const btnSwitch = document.getElementById('btnSwitchMode');
+            const banner = document.getElementById('commuteModeBanner');
+
+            if (badgeText) {
+                badgeText.textContent = isDriver ? 'DRIVER MODE (Vehicle Owner)' : 'PASSENGER MODE';
+                badgeText.style.background = isDriver ? '#16a34a' : 'var(--primary)';
+            }
+            if (badgeSub) {
+                badgeSub.textContent = isDriver 
+                    ? 'Publish empty seats, offer rides to EEC campus, and manage seat requests' 
+                    : 'Search routes, drop pins on map, and book empty seats with verified peers';
+            }
+            if (btnSwitch) {
+                btnSwitch.textContent = isDriver ? 'Switch to Passenger Mode ⇄' : 'Switch to Driver Mode ⇄';
+            }
+            if (banner) {
+                banner.style.background = isDriver 
+                    ? 'linear-gradient(135deg, #064e3b, #0f172a)' 
+                    : 'linear-gradient(135deg, #1e293b, #0f172a)';
+            }
+
+            // 2. Dynamically replace Sidebar Menu buttons
+            const sidebarMenu = document.getElementById('sidebarMenu');
+            if (sidebarMenu) {
+                if (isDriver) {
+                    sidebarMenu.innerHTML = `
+                        <button class="sidebar-item" id="tabOfferRide" onclick="showDashboardTab('offerRide')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-car"></use></svg>
+                            <span>Offer a Ride</span>
+                        </button>
+                        <button class="sidebar-item" id="tabMyOfferedRides" onclick="showDashboardTab('myOfferedRides')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-route"></use></svg>
+                            <span>My Offers & Requests</span>
+                        </button>
+                        <button class="sidebar-item" id="tabProfile" onclick="showDashboardTab('profile')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-user"></use></svg>
+                            <span>Profile & Role</span>
+                        </button>
+                    `;
+                } else {
+                    sidebarMenu.innerHTML = `
+                        <button class="sidebar-item" id="tabFindRides" onclick="showDashboardTab('findRides')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-search"></use></svg>
+                            <span>Find Rides</span>
+                        </button>
+                        <button class="sidebar-item" id="tabMyRides" onclick="showDashboardTab('myRides')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-car"></use></svg>
+                            <span>My Bookings</span>
+                        </button>
+                        <button class="sidebar-item" id="tabProfile" onclick="showDashboardTab('profile')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-user"></use></svg>
+                            <span>Profile & Role</span>
+                        </button>
+                    `;
+                }
+            }
+
+            // 3. Update Profile View role buttons
+            const riderBtn = document.getElementById('roleBtnRider');
+            const driverBtn = document.getElementById('roleBtnDriver');
+            if (riderBtn) riderBtn.classList.toggle('active', !isDriver);
+            if (driverBtn) driverBtn.classList.toggle('active', isDriver);
+
+            // 4. Update Landing Page Hero Action Button
+            const heroBtnText = document.getElementById('heroBtnText');
+            const heroBtnIcon = document.getElementById('heroBtnIcon');
+            if (heroBtnText) {
+                heroBtnText.textContent = isDriver ? 'Offer a Ride' : 'Find Rides';
+            }
+            if (heroBtnIcon) {
+                heroBtnIcon.innerHTML = isDriver 
+                    ? '<use href="#icon-car"></use>' 
+                    : '<use href="#icon-search"></use>';
+            }
+        }
+
+        function toggleCommuterMode() {
+            const nextRole = (activeCommuteRole === 'DRIVER') ? 'RIDER' : 'DRIVER';
+            handleRoleUpdate(nextRole);
+        }
+
+        function selectVehicleType(type) {
+            const cardCarpool = document.getElementById('vTypeCardCarpool');
+            const cardBikepool = document.getElementById('vTypeCardBikepool');
+            const inputType = document.getElementById('offerVehicleType');
+            const inputModel = document.getElementById('offerVehicleModel');
+            const selectSeats = document.getElementById('offerSeats');
+
+            if (type === 'CARPOOL') {
+                if (cardCarpool) cardCarpool.classList.add('active');
+                if (cardBikepool) cardBikepool.classList.remove('active');
+                if (inputType) inputType.value = 'CARPOOL';
+                if (inputModel) inputModel.value = 'Maruti Swift • 18 km/l';
+                if (selectSeats) {
+                    selectSeats.innerHTML = `
+                        <option value="1">1 Seat Available</option>
+                        <option value="2" selected>2 Seats Available</option>
+                        <option value="3">3 Seats Available</option>
+                        <option value="4">4 Seats Available</option>
+                    `;
+                }
+            } else {
+                if (cardBikepool) cardBikepool.classList.add('active');
+                if (cardCarpool) cardCarpool.classList.remove('active');
+                if (inputType) inputType.value = 'BIKEPOOL';
+                if (inputModel) inputModel.value = 'Yamaha RayZR • 50 km/l';
+                if (selectSeats) {
+                    selectSeats.innerHTML = `
+                        <option value="1" selected>1 Pillion Seat Available</option>
+                    `;
+                }
+            }
+        }
+
+        function handlePublishRide(e) {
+            e.preventDefault();
+            const pickup = document.getElementById('offerPickup').value.trim();
+            const destination = document.getElementById('offerDestination').value.trim();
+            const vehicleModel = document.getElementById('offerVehicleModel').value.trim();
+            const vehiclePlate = document.getElementById('offerVehiclePlate').value.trim();
+            const departureTime = document.getElementById('offerTime').value.trim();
+            const seats = parseInt(document.getElementById('offerSeats').value) || 1;
+            const type = document.getElementById('offerVehicleType').value;
+            const notes = document.getElementById('offerNotes').value.trim();
+
+            if (!pickup || !vehicleModel || !vehiclePlate) {
+                showToast('Please fill all required vehicle and route fields.', 'warning');
+                return;
+            }
+
+            // Estimate coordinates around pickup
+            let rideCoords = [13.0359, 80.1568]; // Porur default
+            const matchHub = CHENNAI_HUBS.find(h => pickup.toLowerCase().includes(h.name.toLowerCase()));
+            if (matchHub) {
+                rideCoords = matchHub.coords;
+            } else if (pickupCoords) {
+                rideCoords = [...pickupCoords];
+            }
+
+            const crowKm = getHaversineDistanceKm(rideCoords[0], rideCoords[1], EEC_COORDS[0], EEC_COORDS[1]);
+            const distKm = parseFloat(Math.max(1.5, crowKm * 1.25).toFixed(1));
+
+            const driverName = (currentUser && currentUser.fullName) ? currentUser.fullName : "You (Verified Driver)";
+            const initials = driverName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'DR';
+
+            const newRideId = Date.now();
+
+            const newDriverRide = {
+                id: newRideId,
+                origin: pickup,
+                dest: destination,
+                time: departureTime,
+                vehicle: `${vehicleModel} (${vehiclePlate})`,
+                type: type,
+                seatsAvailable: seats,
+                totalSeats: seats,
+                status: "ACTIVE",
+                notes: notes
+            };
+
+            driverRides.unshift(newDriverRide);
+
+            // Also add to passenger search list
+            sampleRides.unshift({
+                id: newRideId,
+                name: driverName,
+                type: type,
+                vehicle: `${vehicleModel} • Fair Fuel Split`,
+                origin: pickup.split(',')[0],
+                dest: "Easwari Engineering College",
+                distanceKm: distKm,
+                time: departureTime,
+                seats: seats,
+                avatar: initials,
+                lat: rideCoords[0],
+                lng: rideCoords[1]
+            });
+
+            renderRides(sampleRides);
+            if (ridesMap) renderMapRides(sampleRides);
+
+            showToast('Ride published! Your empty seats are now live for campus peers.', 'success');
+            showDashboardTab('myOfferedRides');
+        }
+
+        function renderDriverOfferedRides() {
+            const ridesContainer = document.getElementById('driverActiveRidesList');
+            const requestsContainer = document.getElementById('driverPassengerRequestsList');
+            const pendingBadge = document.getElementById('pendingRequestsCount');
+
+            // Render Driver's published rides
+            if (ridesContainer) {
+                if (driverRides.length === 0) {
+                    ridesContainer.innerHTML = `
+                        <div style="text-align: center; padding: 36px 20px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-lg); border: 1.5px dashed var(--border-color); margin-top: 10px;">
+                            <svg class="icon" width="32" height="32" style="margin-bottom: 8px; color: #94a3b8;"><use href="#icon-car"></use></svg>
+                            <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">No active ride offers yet</div>
+                            <p style="font-size: 12px; margin-top: 4px;">Click "+ Offer New Ride" above to post an empty car seat or bike pillion ride.</p>
+                        </div>
+                    `;
+                } else {
+                    ridesContainer.innerHTML = driverRides.map(r => `
+                        <div class="driver-ride-card" id="driverRideCard_${r.id}">
+                            <div class="driver-ride-meta">
+                                <h4>
+                                    <span>${r.type === 'CARPOOL' ? '🚗 Carpool' : '🛵 Bike-pool'}</span>
+                                    <span>•</span>
+                                    <span>${r.origin.split(',')[0]} → EEC Campus</span>
+                                    <span class="status-pill active">${r.status}</span>
+                                </h4>
+                                <div class="driver-ride-sub">
+                                    <span><b>Departure:</b> ${r.time}</span>
+                                    <span><b>Vehicle:</b> ${r.vehicle}</span>
+                                    <span><b>Seats:</b> ${r.seatsAvailable} of ${r.totalSeats} seats open</span>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; color: #dc2626; border-color: #fca5a5;" onclick="cancelDriverRide(${r.id})">Cancel Offer</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            // Render Incoming Passenger Requests
+            const pendingRequests = passengerRequests.filter(req => req.status === 'PENDING');
+            if (pendingBadge) {
+                pendingBadge.textContent = `${pendingRequests.length} Pending`;
+                pendingBadge.style.display = pendingRequests.length > 0 ? 'inline-block' : 'none';
+            }
+
+            if (requestsContainer) {
+                if (passengerRequests.length === 0) {
+                    requestsContainer.innerHTML = `
+                        <div style="text-align: center; padding: 24px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-md);">
+                            No passenger requests at this moment.
+                        </div>
+                    `;
+                } else {
+                    requestsContainer.innerHTML = passengerRequests.map(req => `
+                        <div class="passenger-request-card" id="reqCard_${req.id}">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: #eff6ff; color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;">
+                                    ${req.passengerName.charAt(0)}
+                                </div>
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                                        ${req.passengerName}
+                                        <span class="verified-badge" title="Verified EEC Student">
+                                            <svg class="icon" width="13" height="13" style="color:var(--primary);"><use href="#icon-shield-check"></use></svg>
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">${req.dept} • Year ${req.year}</div>
+                                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                                        <b>Pickup:</b> ${req.pickup} • <b>Trip:</b> ${req.time}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                ${req.status === 'PENDING' ? `
+                                    <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; border-color: #ef4444; color: #ef4444;" onclick="declinePassengerRequest(${req.id})">Decline</button>
+                                    <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; background: #16a34a; border-color: #16a34a;" onclick="acceptPassengerRequest(${req.id})">Accept Request</button>
+                                ` : req.status === 'ACCEPTED' ? `
+                                    <span style="font-size: 12px; font-weight: 700; color: #16a34a; background: #dcfce7; padding: 4px 12px; border-radius: 9999px;">✓ Confirmed Seat</span>
+                                ` : `
+                                    <span style="font-size: 12px; font-weight: 700; color: #94a3b8; background: #f1f5f9; padding: 4px 12px; border-radius: 9999px;">Declined</span>
+                                `}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+
+        function acceptPassengerRequest(requestId) {
+            const req = passengerRequests.find(r => r.id === requestId);
+            if (req) {
+                req.status = 'ACCEPTED';
+                if (driverRides.length > 0 && driverRides[0].seatsAvailable > 0) {
+                    driverRides[0].seatsAvailable--;
+                }
+                renderDriverOfferedRides();
+                showToast(`Accepted seat request from ${req.passengerName}!`, 'success');
+            }
+        }
+
+        function declinePassengerRequest(requestId) {
+            const req = passengerRequests.find(r => r.id === requestId);
+            if (req) {
+                req.status = 'DECLINED';
+                renderDriverOfferedRides();
+                showToast(`Declined request from ${req.passengerName}.`, 'info');
+            }
+        }
+
+        function cancelDriverRide(rideId) {
+            driverRides = driverRides.filter(r => r.id !== rideId);
+            const sIdx = sampleRides.findIndex(r => r.id === rideId);
+            if (sIdx !== -1) sampleRides.splice(sIdx, 1);
+            renderDriverOfferedRides();
+            renderRides(sampleRides);
+            if (ridesMap) renderMapRides(sampleRides);
+            showToast('Ride offer cancelled.', 'info');
+        }
+
+        function renderPassengerBookings() {
+            const container = document.getElementById('passengerBookingsList');
+            if (!container) return;
+
+            if (passengerBookings.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-lg); border: 1.5px dashed var(--border-color); margin-top: 10px;">
+                        <svg class="icon" width="32" height="32" style="margin-bottom: 8px; color: #94a3b8;"><use href="#icon-route"></use></svg>
+                        <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">No booked rides yet</div>
+                        <p style="font-size: 12px; margin-top: 4px;">Find available carpools or bike-pools on the map and book your seat.</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = passengerBookings.map(b => `
+                    <div class="passenger-booking-card" id="bookingCard_${b.id}">
+                        <div class="passenger-booking-meta">
+                            <h4>
+                                <span>${b.type === 'CARPOOL' ? '🚗 Carpool' : '🛵 Bike-pool'} with ${b.driverName}</span>
+                                <span class="status-pill confirmed">✓ ${b.status}</span>
+                            </h4>
+                            <div class="passenger-booking-sub">
+                                <span><b>Route:</b> ${b.route}</span>
+                                <span><b>Vehicle:</b> ${b.vehicle}</span>
+                                <span><b>Departure:</b> ${b.time}</span>
+                                <span><b>Seats:</b> ${b.seatsBooked} Seat</span>
+                            </div>
+                            <div style="font-size: 11px; color: #15803d; margin-top: 6px; display: flex; align-items: center; gap: 4px;">
+                                <svg class="icon" width="13" height="13"><use href="#icon-fuel"></use></svg>
+                                <span>Fuel expense will be calculated by the system on arrival based on actual km.</span>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; color: #dc2626; border-color: #fca5a5;" onclick="cancelPassengerBooking(${b.id})">Cancel Ride</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function cancelPassengerBooking(bookingId) {
+            passengerBookings = passengerBookings.filter(b => b.id !== bookingId);
+            renderPassengerBookings();
+            showToast('Ride booking cancelled.', 'info');
+        }
+    </script>
+</body>
+</html>

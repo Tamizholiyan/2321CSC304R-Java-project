@@ -1,0 +1,6 @@
+com\campuscommute\campuscommute\CampusCommuteApplicationTests.class
+com\campuscommute\campuscommute\rides\RideStatusValidatorTest.class
+com\campuscommute\campuscommute\bookings\BookingIntegrationTest.class
+com\campuscommute\campuscommute\auth\AuthIntegrationTest.class
+com\campuscommute\campuscommute\rides\RideIntegrationTest.class
+com\campuscommute\campuscommute\rides\GoogleRoutesClientTest.class
