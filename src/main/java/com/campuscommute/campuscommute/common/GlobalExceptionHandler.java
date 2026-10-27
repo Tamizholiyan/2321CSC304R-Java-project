@@ -3,6 +3,9 @@ package com.campuscommute.campuscommute.common;
 import com.campuscommute.campuscommute.auth.DuplicateRegistrationException;
 import com.campuscommute.campuscommute.auth.InvalidTokenException;
 import com.campuscommute.campuscommute.auth.UnauthorizedInstitutionalAccessException;
+import com.campuscommute.campuscommute.bookings.BookingNotFoundException;
+import com.campuscommute.campuscommute.bookings.DuplicateBookingException;
+import com.campuscommute.campuscommute.bookings.OverbookingException;
 import com.campuscommute.campuscommute.rides.InvalidRideStateException;
 import com.campuscommute.campuscommute.rides.RideNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -134,11 +137,6 @@ public class GlobalExceptionHandler {
     }
 
     // ==========================================
-    // HOOKS FOR FUTURE MODULES (Rides, Booking, Shuttle)
-    // Team members can append their domain exception handlers below.
-    // ==========================================
-
-    // ==========================================
     // MODULE 2: RIDES LIFECYCLE EXCEPTIONS
     // ==========================================
 
@@ -157,6 +155,46 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidRideStateException.class)
     public ResponseEntity<ApiError> handleInvalidRideState(
             InvalidRideStateException ex, HttpServletRequest request) {
+        ApiError error = ApiError.of(
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    // ==========================================
+    // MODULE 3: BOOKING & CONCURRENCY EXCEPTIONS
+    // ==========================================
+
+    @ExceptionHandler(BookingNotFoundException.class)
+    public ResponseEntity<ApiError> handleBookingNotFound(
+            BookingNotFoundException ex, HttpServletRequest request) {
+        ApiError error = ApiError.of(
+                HttpStatus.NOT_FOUND.value(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(OverbookingException.class)
+    public ResponseEntity<ApiError> handleOverbooking(
+            OverbookingException ex, HttpServletRequest request) {
+        ApiError error = ApiError.of(
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(DuplicateBookingException.class)
+    public ResponseEntity<ApiError> handleDuplicateBooking(
+            DuplicateBookingException ex, HttpServletRequest request) {
         ApiError error = ApiError.of(
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),

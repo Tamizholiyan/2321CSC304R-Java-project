@@ -21,7 +21,7 @@ Campus Commute is a peer-to-peer carpooling and bike-pooling platform localized 
 | :--- | :--- | :--- | :--- |
 | **Module 1** | `com.campuscommute.campuscommute.auth` & `...common` | Institutional Identity Verification, Walled-Garden Onboarding, Stateless JWT Security, Shared Exception Handling, Unified Frontend SPA | **COMPLETED & FROZEN** |
 | **Module 2** | `com.campuscommute.campuscommute.rides` | Ride Lifecycle (`SCHEDULED` → `ONGOING` → `COMPLETED`/`CANCELLED`), Google Routes API v2 Distance Engine, Route Matching & Filtering | **COMPLETED & FROZEN** |
-| **Module 3** | `com.campuscommute.campuscommute.bookings` | Concurrency-Safe Seat Reservation (Pessimistic/Optimistic Locking), Booking Requests & Settlements | *Ready to implement* |
+| **Module 3** | `com.campuscommute.campuscommute.bookings` | Concurrency-Safe Seat Reservation (Pessimistic Locking), Booking Requests & Settlements | **COMPLETED & FROZEN** |
 | **Module 4** | `com.campuscommute.campuscommute.coordination` | Real-time Trip Coordination, WebSocket (`/ws/**`) & Live Peer Notifications | *Ready to implement* |
 
 ---
