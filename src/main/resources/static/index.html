@@ -1374,14 +1374,130 @@
         }
 
         /* Map container */
-        #ridesMap {
+        #ridesMap, #offerRideMap {
             width: 100%;
             height: 100%;
             min-height: 480px;
         }
 
-        #ridesMap.crosshair-cursor {
+        #ridesMap.crosshair-cursor, #offerRideMap.crosshair-cursor {
             cursor: crosshair !important;
+        }
+
+        /* Offer Ride two-column layout */
+        .offer-ride-view-container {
+            display: grid;
+            grid-template-columns: 55% 45%;
+            height: 100%;
+        }
+
+        .offer-left-panel {
+            padding: 24px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .offer-map-panel {
+            position: relative;
+            height: 100%;
+        }
+
+        /* Autocomplete dropdown styles */
+        .place-autocomplete-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            z-index: 2000;
+            max-height: 280px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .place-autocomplete-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.15s ease;
+        }
+
+        .place-autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .place-autocomplete-item:hover,
+        .place-autocomplete-item.active {
+            background: #eff6ff;
+        }
+
+        .place-item-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            width: 24px;
+            text-align: center;
+        }
+
+        .place-item-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .place-item-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .place-item-addr {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .place-autocomplete-status {
+            padding: 12px 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .place-quick-header {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            padding: 8px 14px 4px;
+            background: #f8fafc;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .pickup-dist-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #e0f2fe;
+            color: #0369a1;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            border: 1px solid #bae6fd;
         }
 
         /* Map floating overlays */
@@ -1894,6 +2010,24 @@
             .dashboard-layout { grid-template-columns: 1fr; }
             .rides-view-container { grid-template-columns: 1fr; }
             .features-grid { grid-template-columns: 1fr; }
+
+            .offer-ride-view-container {
+                display: flex !important;
+                flex-direction: column !important;
+                height: auto;
+            }
+            .offer-ride-view-container .offer-map-panel {
+                order: -1;
+                height: 260px !important;
+                min-height: 260px !important;
+            }
+            .offer-ride-view-container .offer-left-panel {
+                padding: 16px;
+            }
+            #offerRideMap {
+                height: 260px !important;
+                min-height: 260px !important;
+            }
         }
     </style>
 </head>
@@ -2195,7 +2329,13 @@
 
                         <!-- Available rides listing -->
                         <div class="rides-list-header">
-                            <h3>Available Rides</h3>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <h3>Available Rides</h3>
+                                <button type="button" class="btn btn-outline" id="btnRefreshRides" onclick="manualRefreshRides()" title="Refresh available rides list" style="padding: 4px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px;">
+                                    <svg class="icon" width="12" height="12"><use href="#icon-route"></use></svg>
+                                    <span>Refresh</span>
+                                </button>
+                            </div>
                             <span style="font-size: 13px; color: var(--text-muted);">Sort by: Departure Time ▾</span>
                         </div>
 
@@ -2284,151 +2424,181 @@
                 </div>
 
                 <!-- OFFER RIDE VIEW (DRIVER) -->
-                <div id="subViewOfferRide" class="offer-ride-container" style="display: none;">
-                    <div class="offer-ride-card">
-                        <div class="offer-card-header">
-                            <div>
-                                <h2>
-                                    <svg class="icon" width="22" height="22" style="color:var(--primary);"><use href="#icon-car"></use></svg>
-                                    <span>Offer a Ride to Campus</span>
-                                </h2>
-                                <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
-                                    Share your commute, reduce campus congestion, and split fuel costs transparently with verified peers.
-                                </p>
+                <div id="subViewOfferRide" class="rides-view-container offer-ride-view-container" style="display: none;">
+                    <div class="rides-left-panel offer-left-panel">
+                        <div class="offer-ride-card">
+                            <div class="offer-card-header">
+                                <div>
+                                    <h2>
+                                        <svg class="icon" width="22" height="22" style="color:var(--primary);"><use href="#icon-car"></use></svg>
+                                        <span>Offer a Ride to Campus</span>
+                                    </h2>
+                                    <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">
+                                        Share your commute, reduce campus congestion, and split fuel costs transparently with verified peers.
+                                    </p>
+                                </div>
+                                <span class="verified-pill">Driver Verified</span>
                             </div>
-                            <span class="verified-pill">Driver Verified</span>
+
+                            <form id="offerRideForm" onsubmit="handlePublishRide(event)">
+                                <!-- Vehicle Type -->
+                                <div class="form-group">
+                                    <label style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; display: block;">Select Vehicle</label>
+                                    <div class="vehicle-type-selector">
+                                        <div class="v-select-card active" id="vTypeCardCarpool" onclick="selectVehicleType('CARPOOL')">
+                                            <div class="v-select-icon">
+                                                <svg class="icon" width="22" height="22"><use href="#icon-car"></use></svg>
+                                            </div>
+                                            <div>
+                                                <div style="font-size: 14px; font-weight: 700;">Carpool (Car)</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);">Offer up to 4 empty seats</div>
+                                            </div>
+                                        </div>
+                                        <div class="v-select-card" id="vTypeCardBikepool" onclick="selectVehicleType('BIKEPOOL')">
+                                            <div class="v-select-icon">
+                                                <svg class="icon" width="22" height="22"><use href="#icon-bike"></use></svg>
+                                            </div>
+                                            <div>
+                                                <div style="font-size: 14px; font-weight: 700;">Bike-pool (Two-Wheeler)</div>
+                                                <div style="font-size: 11px; color: var(--text-muted);">Offer 1 pillion seat</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="offerVehicleType" value="CARPOOL">
+                                </div>
+
+                                <!-- Route Details with Pickup, Swap [⇅], Drop, and Autocomplete -->
+                                <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+                                    <div class="form-group" style="position: relative;">
+                                        <label style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; display: block;">Pickup Location / Starting Point</label>
+                                        <div class="input-with-icon" style="position: relative;">
+                                            <span class="input-icon">
+                                                <svg class="icon" width="16" height="16"><use href="#icon-pin"></use></svg>
+                                            </span>
+                                            <input type="text" class="auth-input" id="offerPickup" placeholder="Search pickup or use GPS" value="Porur Junction, Chennai" autocomplete="off" required>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; justify-content: center; margin: -2px 0;">
+                                        <button type="button" class="swap-locations-btn" onclick="swapOfferLocations()" title="Swap Pickup & Destination" style="position: static; transform: none; width: 34px; height: 34px; border-radius: 50%;">
+                                            ⇅
+                                        </button>
+                                    </div>
+
+                                    <div class="form-group" style="position: relative;">
+                                        <label style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; display: block;">Destination / Drop Location</label>
+                                        <div class="input-with-icon" style="position: relative;">
+                                            <span class="input-icon">
+                                                <svg class="icon" width="16" height="16"><use href="#icon-pin"></use></svg>
+                                            </span>
+                                            <input type="text" class="auth-input" id="offerDrop" placeholder="Search drop or choose EEC Campus" value="Easwari Engineering College, Ramapuram" autocomplete="off" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Vehicle Model & Plate -->
+                                <div class="offer-form-grid" style="margin-top: 12px;">
+                                    <div class="form-group">
+                                        <label>Vehicle Name & Model</label>
+                                        <div class="input-with-icon">
+                                            <span class="input-icon">
+                                                <svg class="icon" width="16" height="16"><use href="#icon-car"></use></svg>
+                                            </span>
+                                            <input type="text" class="auth-input" id="offerVehicleModel" placeholder="e.g. Maruti Swift / Honda Activa" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Vehicle Plate Number</label>
+                                        <div class="input-with-icon">
+                                            <span class="input-icon">
+                                                <svg class="icon" width="16" height="16"><use href="#icon-shield-check"></use></svg>
+                                            </span>
+                                            <input type="text" class="auth-input" id="offerVehiclePlate" placeholder="e.g. TN 09 BX 4521" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Mileage & Time -->
+                                <div class="offer-form-grid" style="margin-top: 12px;">
+                                    <div class="form-group">
+                                        <label>Fuel Mileage (km/l)</label>
+                                        <div class="input-with-icon">
+                                            <span class="input-icon">
+                                                <svg class="icon" width="16" height="16"><use href="#icon-fuel"></use></svg>
+                                            </span>
+                                            <input type="number" step="0.1" min="5" max="120" class="auth-input" id="offerMileage" placeholder="e.g. 18.0" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label>Departure Date & Time</label>
+                                        <div class="input-with-icon">
+                                            <span class="input-icon">
+                                                <svg class="icon" width="16" height="16"><use href="#icon-clock"></use></svg>
+                                            </span>
+                                            <input type="datetime-local" class="auth-input" id="offerDepartureTime" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Available Seats -->
+                                <div class="form-group" style="margin-top: 12px;">
+                                    <label>Available Seats</label>
+                                    <div class="input-with-icon">
+                                        <span class="input-icon">
+                                            <svg class="icon" width="16" height="16"><use href="#icon-user"></use></svg>
+                                        </span>
+                                        <select class="auth-select" id="offerSeats">
+                                            <option value="1">1 Seat Available</option>
+                                            <option value="2" selected>2 Seats Available</option>
+                                            <option value="3">3 Seats Available</option>
+                                            <option value="4">4 Seats Available</option>
+                                            <option value="5">5 Seats Available</option>
+                                            <option value="6">6 Seats Available</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Commute Notes -->
+                                <div class="form-group" style="margin-top: 12px;">
+                                    <label>Commute Notes (Optional)</label>
+                                    <input type="text" class="auth-input" id="offerNotes" placeholder="e.g. AC carpool, waiting 5 mins at Porur signal, helmet provided">
+                                </div>
+
+                                <!-- Fuel Cost Disclaimer -->
+                                <div style="background: #f1f5f9; border-radius: var(--radius-md); padding: 12px 16px; margin-top: 16px; font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+                                    <svg class="icon" width="18" height="18" style="color: #15803d; flex-shrink: 0;"><use href="#icon-fuel"></use></svg>
+                                    <span><b>Fair Fuel Sharing:</b> Fuel expenses will be computed dynamically upon ride completion by the system based on actual distance traveled and vehicle mileage, split equally among occupants.</span>
+                                </div>
+
+                                <button type="submit" class="auth-submit-btn" style="margin-top: 20px;" id="btnPublishRide" disabled>
+                                    Publish Campus Ride
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Map Panel (Right side) -->
+                    <div class="offer-map-panel" style="position: relative; height: 100%;">
+                        <div id="offerRideMap"></div>
+
+                        <!-- Map Floating Banner for route distance info -->
+                        <div id="offerMapInfoBanner" class="map-floating-banner" style="display: flex;">
+                            <div class="banner-content">
+                                <span id="offerMapRouteBadge">📍 Route: Setting up route...</span>
+                            </div>
                         </div>
 
-                        <form id="offerRideForm" onsubmit="handlePublishRide(event)">
-                            <!-- Vehicle Type -->
-                            <div class="form-group">
-                                <label style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; display: block;">Select Vehicle</label>
-                                <div class="vehicle-type-selector">
-                                    <div class="v-select-card active" id="vTypeCardCarpool" onclick="selectVehicleType('CARPOOL')">
-                                        <div class="v-select-icon">
-                                            <svg class="icon" width="22" height="22"><use href="#icon-car"></use></svg>
-                                        </div>
-                                        <div>
-                                            <div style="font-size: 14px; font-weight: 700;">Carpool (Car)</div>
-                                            <div style="font-size: 11px; color: var(--text-muted);">Offer up to 4 empty seats</div>
-                                        </div>
-                                    </div>
-                                    <div class="v-select-card" id="vTypeCardBikepool" onclick="selectVehicleType('BIKEPOOL')">
-                                        <div class="v-select-icon">
-                                            <svg class="icon" width="22" height="22"><use href="#icon-bike"></use></svg>
-                                        </div>
-                                        <div>
-                                            <div style="font-size: 14px; font-weight: 700;">Bike-pool (Two-Wheeler)</div>
-                                            <div style="font-size: 11px; color: var(--text-muted);">Offer 1 pillion seat</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <input type="hidden" id="offerVehicleType" value="CARPOOL">
-                            </div>
-
-                            <!-- Route Details -->
-                            <div class="offer-form-grid" style="margin-top: 16px;">
-                                <div class="form-group">
-                                    <label>Pickup Location / Starting Point</label>
-                                    <div class="input-with-icon">
-                                        <span class="input-icon">
-                                            <svg class="icon" width="16" height="16"><use href="#icon-pin"></use></svg>
-                                        </span>
-                                        <input type="text" class="auth-input" id="offerPickup" placeholder="e.g. Porur Junction / Vadapalani" value="Porur Junction, Chennai" required>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Destination</label>
-                                    <div class="input-with-icon">
-                                        <span class="input-icon">
-                                            <svg class="icon" width="16" height="16"><use href="#icon-pin"></use></svg>
-                                        </span>
-                                        <input type="text" class="auth-input" id="offerDestination" value="Easwari Engineering College, Ramapuram" readonly>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Vehicle Model & Plate -->
-                            <div class="offer-form-grid" style="margin-top: 12px;">
-                                <div class="form-group">
-                                    <label>Vehicle Name & Model</label>
-                                    <div class="input-with-icon">
-                                        <span class="input-icon">
-                                            <svg class="icon" width="16" height="16"><use href="#icon-car"></use></svg>
-                                        </span>
-                                        <input type="text" class="auth-input" id="offerVehicleModel" placeholder="e.g. Maruti Swift / Honda Activa" required>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Vehicle Plate Number</label>
-                                    <div class="input-with-icon">
-                                        <span class="input-icon">
-                                            <svg class="icon" width="16" height="16"><use href="#icon-shield-check"></use></svg>
-                                        </span>
-                                        <input type="text" class="auth-input" id="offerVehiclePlate" placeholder="e.g. TN 09 BX 4521" required>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Mileage & Time -->
-                            <div class="offer-form-grid" style="margin-top: 12px;">
-                                <div class="form-group">
-                                    <label>Fuel Mileage (km/l)</label>
-                                    <div class="input-with-icon">
-                                        <span class="input-icon">
-                                            <svg class="icon" width="16" height="16"><use href="#icon-fuel"></use></svg>
-                                        </span>
-                                        <input type="number" step="0.1" min="5" max="120" class="auth-input" id="offerMileage" placeholder="e.g. 18.0" required>
-                                    </div>
-                                </div>
-
-                                <div class="form-group">
-                                    <label>Departure Date & Time</label>
-                                    <div class="input-with-icon">
-                                        <span class="input-icon">
-                                            <svg class="icon" width="16" height="16"><use href="#icon-clock"></use></svg>
-                                        </span>
-                                        <input type="datetime-local" class="auth-input" id="offerDepartureTime" required>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Available Seats -->
-                            <div class="form-group" style="margin-top: 12px;">
-                                <label>Available Seats</label>
-                                <div class="input-with-icon">
-                                    <span class="input-icon">
-                                        <svg class="icon" width="16" height="16"><use href="#icon-user"></use></svg>
-                                    </span>
-                                    <select class="auth-select" id="offerSeats">
-                                        <option value="1">1 Seat Available</option>
-                                        <option value="2" selected>2 Seats Available</option>
-                                        <option value="3">3 Seats Available</option>
-                                        <option value="4">4 Seats Available</option>
-                                        <option value="5">5 Seats Available</option>
-                                        <option value="6">6 Seats Available</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- Commute Notes -->
-                            <div class="form-group" style="margin-top: 12px;">
-                                <label>Commute Notes (Optional)</label>
-                                <input type="text" class="auth-input" id="offerNotes" placeholder="e.g. AC carpool, waiting 5 mins at Porur signal, helmet provided">
-                            </div>
-
-                            <!-- Fuel Cost Disclaimer -->
-                            <div style="background: #f1f5f9; border-radius: var(--radius-md); padding: 12px 16px; margin-top: 16px; font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
-                                <svg class="icon" width="18" height="18" style="color: #15803d; flex-shrink: 0;"><use href="#icon-fuel"></use></svg>
-                                <span><b>Fair Fuel Sharing:</b> Fuel expenses will be computed dynamically upon ride completion by the system based on actual distance traveled and vehicle mileage, split equally among occupants.</span>
-                            </div>
-
-                            <button type="submit" class="auth-submit-btn" style="margin-top: 20px;" id="btnPublishRide">
-                                Publish Campus Ride
+                        <!-- Map Floating Controls (GPS & Recenter) -->
+                        <div class="map-floating-controls">
+                            <button type="button" class="map-ctrl-btn" onclick="handleOfferUseGps()" title="Use Device GPS Location for Pickup">
+                                <svg class="icon" width="18" height="18"><use href="#icon-crosshair"></use></svg>
                             </button>
-                        </form>
+                            <button type="button" class="map-ctrl-btn" onclick="recenterOfferMap()" title="Fit pickup and drop on map">
+                                <svg class="icon" width="18" height="18"><use href="#icon-route"></use></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -2635,8 +2805,8 @@
         let activeFilterType = 'ALL';
 
         let ridesMap = null;
-        let pickupCoords = [13.0359, 80.1568]; // Porur default
-        let dropCoords = [13.0315, 80.1804];   // EEC fixed default
+        let riderPickupCoords = [13.0500, 80.2120]; // Vadapalani default
+        let riderDropCoords = [13.0315, 80.1804];   // EEC fixed default
         let pickupMarker = null;
         let dropMarker = null;
         let routePolyline = null;
@@ -2644,6 +2814,18 @@
         let mapPinDropMode = null; // null | 'PICKUP' | 'DROP'
         let rideMarkersGroup = null;
         let activeSelectedRideId = null;
+
+        // Driver Offer Ride Map State
+        let offerRideMap = null;
+        let offerPickupCoords = [13.0359, 80.1568]; // Porur default
+        let offerDropCoords = [13.0315, 80.1804];   // EEC default
+        let offerPickupMarker = null;
+        let offerDropMarker = null;
+        let offerRoutePolyline = null;
+        let offerGpsCircle = null;
+
+        // Auto-refresh polling timer
+        let ridesPollInterval = null;
 
         // WebSocket & Live Tracking State
         let stompClient = null;
@@ -2699,12 +2881,33 @@
             if (!isoStr) return '-';
             try {
                 const d = new Date(isoStr);
-                return d.toLocaleDateString('en-IN', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                if (isNaN(d.getTime())) return isoStr;
+
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const targetDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+                const diffDays = Math.round((targetDate - today) / (1000 * 60 * 60 * 24));
+
+                const timeStr = d.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
                 });
+
+                if (diffDays === 0) {
+                    return `Today ${timeStr}`;
+                } else if (diffDays === 1) {
+                    return `Tomorrow ${timeStr}`;
+                } else if (diffDays === -1) {
+                    return `Yesterday ${timeStr}`;
+                } else {
+                    const datePrefix = d.toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short'
+                    });
+                    return `${datePrefix} ${timeStr}`;
+                }
             } catch (e) {
                 return isoStr;
             }
@@ -2790,13 +2993,14 @@
         // ==========================================
 
         window.addEventListener('DOMContentLoaded', () => {
-            setupLocationAutocomplete();
+            initAppInputsAndAutocomplete();
 
             if (accessToken) {
                 verifyAndLoadUser();
             } else {
                 applyRoleToUI('RIDER');
                 loadRides();
+                startRidesPolling();
             }
         });
 
@@ -2861,17 +3065,26 @@
                 document.getElementById('subViewFindRides').style.display = 'grid';
                 setTimeout(() => { initRidesMap(); }, 100);
                 loadRides();
-            } else if (tab === 'offerRide') {
-                document.getElementById('subViewOfferRide').style.display = 'block';
-            } else if (tab === 'myOfferedRides') {
-                document.getElementById('subViewMyOfferedRides').style.display = 'block';
-                renderDriverOfferedRides();
-            } else if (tab === 'profile') {
-                document.getElementById('subViewProfile').style.display = 'block';
-                updateProfileView();
-            } else if (tab === 'myRides') {
-                document.getElementById('subViewMyRides').style.display = 'block';
-                renderPassengerBookings();
+                startRidesPolling();
+            } else {
+                stopRidesPolling();
+                if (tab === 'offerRide') {
+                    document.getElementById('subViewOfferRide').style.display = 'grid';
+                    setTimeout(() => {
+                        initOfferRideMap();
+                        setDepartureTimeMin();
+                        checkOfferSubmitState();
+                    }, 100);
+                } else if (tab === 'myOfferedRides') {
+                    document.getElementById('subViewMyOfferedRides').style.display = 'block';
+                    renderDriverOfferedRides();
+                } else if (tab === 'profile') {
+                    document.getElementById('subViewProfile').style.display = 'block';
+                    updateProfileView();
+                } else if (tab === 'myRides') {
+                    document.getElementById('subViewMyRides').style.display = 'block';
+                    renderPassengerBookings();
+                }
             }
         }
 
@@ -3269,12 +3482,28 @@
 
         async function loadRides() {
             try {
-                const startVal = document.getElementById('dashFrom') ? document.getElementById('dashFrom').value.trim() : '';
-                const destVal = document.getElementById('dashTo') ? document.getElementById('dashTo').value.trim() : '';
+                const fromInput = document.getElementById('dashFrom');
+                const toInput = document.getElementById('dashTo');
                 let url = '/api/rides';
                 const params = [];
-                if (startVal) params.push(`startLocation=${encodeURIComponent(startVal)}`);
-                if (destVal) params.push(`destination=${encodeURIComponent(destVal)}`);
+
+                const pLat = fromInput?.dataset.lat;
+                const pLng = fromInput?.dataset.lng;
+                const dLat = toInput?.dataset.lat;
+                const dLng = toInput?.dataset.lng;
+
+                if (pLat && pLng && dLat && dLng) {
+                    params.push(`pickupLat=${encodeURIComponent(pLat)}`);
+                    params.push(`pickupLng=${encodeURIComponent(pLng)}`);
+                    params.push(`dropLat=${encodeURIComponent(dLat)}`);
+                    params.push(`dropLng=${encodeURIComponent(dLng)}`);
+                } else {
+                    const startVal = fromInput ? fromInput.value.trim() : '';
+                    const destVal = toInput ? toInput.value.trim() : '';
+                    if (startVal) params.push(`startLocation=${encodeURIComponent(startVal)}`);
+                    if (destVal) params.push(`destination=${encodeURIComponent(destVal)}`);
+                }
+
                 if (params.length > 0) url += `?${params.join('&')}`;
 
                 const res = await apiFetch(url);
@@ -3344,6 +3573,7 @@
                                 <span class="ride-type-tag">${isCarpool ? 'Carpool' : 'Bike-pool'}</span>
                             </h4>
                             <div class="driver-route">From ${esc(ride.startLocation)} → To ${esc(ride.destination)} (${esc(distText)})</div>
+                            ${ride.pickupDistanceKm != null ? `<div style="margin: 3px 0 2px;"><span class="pickup-dist-pill">📍 ${Number(ride.pickupDistanceKm).toFixed(1)} km from your pickup</span></div>` : ''}
                             <div class="driver-time">
                                 <svg class="icon" width="12" height="12"><use href="#icon-clock"></use></svg>
                                 <span>${esc(formatDateTime(ride.departureTime))}</span>
@@ -3442,8 +3672,21 @@
                 return;
             }
 
-            const pickup = document.getElementById('offerPickup').value.trim();
-            const destination = document.getElementById('offerDestination').value.trim() || 'Easwari Engineering College';
+            const pickupInput = document.getElementById('offerPickup');
+            const dropInput = document.getElementById('offerDrop');
+            const pickup = pickupInput ? pickupInput.value.trim() : '';
+            const destination = dropInput ? dropInput.value.trim() : '';
+
+            const pLat = pickupInput?.dataset.lat ? parseFloat(pickupInput.dataset.lat) : (offerPickupCoords ? offerPickupCoords[0] : null);
+            const pLng = pickupInput?.dataset.lng ? parseFloat(pickupInput.dataset.lng) : (offerPickupCoords ? offerPickupCoords[1] : null);
+            const dLat = dropInput?.dataset.lat ? parseFloat(dropInput.dataset.lat) : (offerDropCoords ? offerDropCoords[0] : null);
+            const dLng = dropInput?.dataset.lng ? parseFloat(dropInput.dataset.lng) : (offerDropCoords ? offerDropCoords[1] : null);
+
+            if (pLat == null || pLng == null || dLat == null || dLng == null) {
+                showToast('Please select both pickup and drop locations from suggestions or map.', 'warning');
+                return;
+            }
+
             const vehicleModel = document.getElementById('offerVehicleModel').value.trim();
             const vehiclePlate = document.getElementById('offerVehiclePlate').value.trim();
             const mileage = parseFloat(document.getElementById('offerMileage').value);
@@ -3452,7 +3695,7 @@
             const typeChip = document.getElementById('offerVehicleType').value;
             const notes = document.getElementById('offerNotes').value.trim();
 
-            if (!pickup || !vehicleModel || !vehiclePlate || !departureInput || isNaN(mileage)) {
+            if (!pickup || !destination || !vehicleModel || !vehiclePlate || !departureInput || isNaN(mileage)) {
                 showToast('Please fill all required vehicle, route, and departure fields.', 'warning');
                 return;
             }
@@ -3477,8 +3720,10 @@
                 vehicleModel: vehicleModel,
                 vehiclePlate: vehiclePlate,
                 departureTime: departureInput,
-                pickupLat: pickupCoords[0],
-                pickupLng: pickupCoords[1],
+                pickupLat: pLat,
+                pickupLng: pLng,
+                dropLat: dLat,
+                dropLng: dLng,
                 mileageKmpl: mileage,
                 availableSeats: seats,
                 notes: notes || null
@@ -3497,7 +3742,10 @@
                 if (res.ok) {
                     showToast('Ride published! Your empty seats are now live for campus peers.', 'success');
                     document.getElementById('offerRideForm').reset();
+                    setDepartureTimeMin();
                     showDashboardTab('myOfferedRides');
+                } else if (res.status === 409) {
+                    showToast(data.message || 'You already have an active ride around this time. Rides must be at least 60 minutes apart.', 'warning');
                 } else {
                     showToast(data.message || 'Failed to publish ride.', 'danger');
                 }
@@ -3506,6 +3754,7 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Publish Campus Ride';
+                checkOfferSubmitState();
             }
         }
 
@@ -3899,69 +4148,24 @@
         }
 
         // ==========================================
-        // LEAFLET MAP & REVERSE GEOCODING
+        // SHARED PIN & AUTOCOMPLETE HELPERS
         // ==========================================
 
-        function initRidesMap() {
-            if (ridesMap) {
-                ridesMap.invalidateSize();
-                return;
-            }
-
-            ridesMap = L.map('ridesMap').setView(EEC_COORDS, 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                maxZoom: 19
-            }).addTo(ridesMap);
-
-            createPickupMarker(pickupCoords);
-            createDropMarker(dropCoords);
-            updateRouteAndEstimates();
-
-            rideMarkersGroup = L.layerGroup().addTo(ridesMap);
-            renderMapRides(currentRides);
-
-            ridesMap.on('click', (e) => {
-                if (!mapPinDropMode) return;
-
-                const lat = e.latlng.lat;
-                const lng = e.latlng.lng;
-
-                if (mapPinDropMode === 'PICKUP') {
-                    pickupCoords = [lat, lng];
-                    if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
-                    reverseGeocode(lat, lng, (addr) => {
-                        const fromInput = document.getElementById('dashFrom');
-                        if (fromInput) fromInput.value = addr;
-                        const offerPickup = document.getElementById('offerPickup');
-                        if (offerPickup) offerPickup.value = addr;
-                        showToast(`Pickup location set: ${addr}`, 'success');
-                    });
-                } else if (mapPinDropMode === 'DROP') {
-                    dropCoords = [lat, lng];
-                    if (dropMarker) dropMarker.setLatLng(dropCoords);
-                    reverseGeocode(lat, lng, (addr) => {
-                        const toInput = document.getElementById('dashTo');
-                        if (toInput) toInput.value = addr;
-                        showToast(`Destination set: ${addr}`, 'success');
-                    });
-                }
-                updateRouteAndEstimates();
-                exitMapPinMode();
-            });
-        }
-
-        function createPickupMarker(coords) {
-            const pickupIcon = L.divIcon({
-                className: 'custom-pin-pickup-vertical',
+        function createMapPinIcon(type, title) {
+            const isPickup = (type === 'PICKUP');
+            const color = isPickup ? '#16a34a' : '#dc2626';
+            const tag = isPickup ? 'Pickup' : 'Drop';
+            const tagClass = isPickup ? 'pickup-tag' : 'drop-tag';
+            return L.divIcon({
+                className: isPickup ? 'custom-pin-pickup-vertical' : 'custom-pin-drop-vertical',
                 html: `
-                    <div class="map-vertical-pin" title="Drag to adjust Pickup location">
-                        <div class="pin-tag pickup-tag">Pickup</div>
+                    <div class="map-vertical-pin" title="${esc(title || ('Drag to adjust ' + tag))}">
+                        <div class="pin-tag ${tagClass}">${tag}</div>
                         <svg width="34" height="46" viewBox="0 0 34 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17 0C7.611 0 0 7.611 0 17C0 29.5 17 46 17 46C17 46 34 29.5 34 17C34 7.611 26.389 0 17 0Z" fill="#16a34a"/>
+                            <path d="M17 0C7.611 0 0 7.611 0 17C0 29.5 17 46 17 46C17 46 34 29.5 34 17C34 7.611 26.389 0 17 0Z" fill="${color}"/>
                             <path d="M17 1C8.163 1 1 8.163 1 17C1 28.6 16.5 44.5 17 45C17.5 44.5 33 28.6 33 17C33 8.163 25.837 1 17 1Z" stroke="white" stroke-width="2"/>
                             <circle cx="17" cy="17" r="7" fill="white"/>
-                            <circle cx="17" cy="17" r="4" fill="#16a34a"/>
+                            <circle cx="17" cy="17" r="4" fill="${color}"/>
                         </svg>
                         <div class="pin-shadow"></div>
                     </div>
@@ -3969,92 +4173,9 @@
                 iconSize: [34, 46],
                 iconAnchor: [17, 46]
             });
-
-            if (pickupMarker) {
-                pickupMarker.setLatLng(coords);
-                return;
-            }
-
-            pickupMarker = L.marker(coords, { icon: pickupIcon, draggable: true }).addTo(ridesMap);
-            pickupMarker.on('dragend', (e) => {
-                const pos = e.target.getLatLng();
-                pickupCoords = [pos.lat, pos.lng];
-                updateRouteAndEstimates();
-                reverseGeocode(pos.lat, pos.lng, (addr) => {
-                    const fromInput = document.getElementById('dashFrom');
-                    if (fromInput) fromInput.value = addr;
-                    const offerPickup = document.getElementById('offerPickup');
-                    if (offerPickup) offerPickup.value = addr;
-                    showToast(`Pickup moved: ${addr}`, 'info');
-                });
-            });
         }
 
-        function createDropMarker(coords) {
-            const dropIcon = L.divIcon({
-                className: 'custom-pin-drop-vertical',
-                html: `
-                    <div class="map-vertical-pin" title="Drag to adjust Destination location">
-                        <div class="pin-tag drop-tag">EEC Drop</div>
-                        <svg width="34" height="46" viewBox="0 0 34 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17 0C7.611 0 0 7.611 0 17C0 29.5 17 46 17 46C17 46 34 29.5 34 17C34 7.611 26.389 0 17 0Z" fill="#dc2626"/>
-                            <path d="M17 1C8.163 1 1 8.163 1 17C1 28.6 16.5 44.5 17 45C17.5 44.5 33 28.6 33 17C33 8.163 25.837 1 17 1Z" stroke="white" stroke-width="2"/>
-                            <circle cx="17" cy="17" r="7" fill="white"/>
-                            <circle cx="17" cy="17" r="4" fill="#dc2626"/>
-                        </svg>
-                        <div class="pin-shadow"></div>
-                    </div>
-                `,
-                iconSize: [34, 46],
-                iconAnchor: [17, 46]
-            });
-
-            if (dropMarker) {
-                dropMarker.setLatLng(coords);
-                return;
-            }
-
-            dropMarker = L.marker(coords, { icon: dropIcon, draggable: true }).addTo(ridesMap);
-            dropMarker.on('dragend', (e) => {
-                const pos = e.target.getLatLng();
-                dropCoords = [pos.lat, pos.lng];
-                updateRouteAndEstimates();
-                reverseGeocode(pos.lat, pos.lng, (addr) => {
-                    const toInput = document.getElementById('dashTo');
-                    if (toInput) toInput.value = addr;
-                    showToast(`Destination moved: ${addr}`, 'info');
-                });
-            });
-        }
-
-        function updateRouteAndEstimates() {
-            if (!pickupCoords || !dropCoords) return;
-
-            const crowKm = getHaversineDistanceKm(pickupCoords[0], pickupCoords[1], dropCoords[0], dropCoords[1]);
-            const roadKm = Math.max(0.6, crowKm * 1.25);
-            const estMinLow = Math.max(3, Math.round(roadKm * 2.2));
-            const estMinHigh = Math.max(5, Math.round(roadKm * 2.8));
-
-            const distEl = document.getElementById('tripDistanceText');
-            const durEl = document.getElementById('tripDurationText');
-            if (distEl) distEl.textContent = `Distance: ${roadKm.toFixed(1)} km`;
-            if (durEl) durEl.textContent = `~${estMinLow} - ${estMinHigh} mins`;
-
-            if (ridesMap) {
-                if (routePolyline) {
-                    ridesMap.removeLayer(routePolyline);
-                }
-                routePolyline = L.polyline([pickupCoords, dropCoords], {
-                    color: '#2563eb',
-                    weight: 4,
-                    opacity: 0.85,
-                    dashArray: '6, 8',
-                    lineCap: 'round'
-                }).addTo(ridesMap);
-            }
-        }
-
-        // Debounced Nominatim reverse geocode (at most 1 request per second)
+        // Debounced Nominatim reverse geocode (<= 1 request per second)
         function reverseGeocode(lat, lng, callback) {
             let nearest = null;
             let minDist = Infinity;
@@ -4094,6 +4215,815 @@
                     else callback(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
                 });
             }, delay);
+        }
+
+        function getRecentPlaces() {
+            try {
+                const raw = localStorage.getItem('cc_recent_places');
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveRecentPlace(place) {
+            try {
+                let list = getRecentPlaces().filter(p =>
+                    Math.abs(p.lat - place.lat) > 0.001 || Math.abs(p.lng - place.lng) > 0.001
+                );
+                list.unshift({
+                    name: place.name,
+                    address: place.address || '',
+                    lat: place.lat,
+                    lng: place.lng
+                });
+                if (list.length > 5) list = list.slice(0, 5);
+                localStorage.setItem('cc_recent_places', JSON.stringify(list));
+            } catch (e) {
+                console.warn('localStorage error', e);
+            }
+        }
+
+        // ONE reusable attachPlaceAutocomplete function for all 4 inputs
+        function attachPlaceAutocomplete(inputEl, options = {}) {
+            if (!inputEl) return;
+
+            let dropdown = inputEl.parentElement.querySelector('.place-autocomplete-dropdown');
+            if (!dropdown) {
+                dropdown = document.createElement('div');
+                dropdown.className = 'place-autocomplete-dropdown';
+                dropdown.setAttribute('role', 'listbox');
+                dropdown.setAttribute('aria-label', 'Location suggestions');
+                if (getComputedStyle(inputEl.parentElement).position === 'static') {
+                    inputEl.parentElement.style.position = 'relative';
+                }
+                inputEl.parentElement.appendChild(dropdown);
+            }
+
+            inputEl.setAttribute('role', 'combobox');
+            inputEl.setAttribute('aria-autocomplete', 'list');
+            inputEl.setAttribute('aria-expanded', 'false');
+
+            let debounceTimer = null;
+            let currentAbortController = null;
+            let activeIndex = -1;
+            let currentResults = [];
+
+            function closeDropdown() {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+                inputEl.setAttribute('aria-expanded', 'false');
+                activeIndex = -1;
+                currentResults = [];
+            }
+
+            function selectIndex(idx) {
+                const place = currentResults[idx];
+                if (place) {
+                    selectPlace(place);
+                }
+            }
+
+            function selectPlace(place) {
+                const displayVal = place.address ? `${place.name}, ${place.address}` : place.name;
+                inputEl.value = displayVal;
+                inputEl.dataset.lat = place.lat;
+                inputEl.dataset.lng = place.lng;
+
+                saveRecentPlace(place);
+                closeDropdown();
+
+                if (options.setCoords) {
+                    options.setCoords([place.lat, place.lng], place.name);
+                }
+
+                const map = options.getMap ? options.getMap() : null;
+                if (map) {
+                    map.flyTo([place.lat, place.lng], 16, { duration: 1.0 });
+                    const otherCoords = options.getOtherCoords ? options.getOtherCoords() : null;
+                    if (otherCoords) {
+                        setTimeout(() => {
+                            map.fitBounds(L.latLngBounds([[place.lat, place.lng], otherCoords]), { padding: [50, 50] });
+                        }, 500);
+                    }
+                }
+
+                if (options.updateRoute) options.updateRoute();
+                if (options.onSelectExtra) options.onSelectExtra();
+            }
+
+            function renderEmptyFocusMenu() {
+                currentResults = [];
+                activeIndex = -1;
+                dropdown.innerHTML = '';
+
+                // Quick Header
+                const hdr = document.createElement('div');
+                hdr.className = 'place-quick-header';
+                hdr.textContent = 'Quick Options';
+                dropdown.appendChild(hdr);
+
+                // Option 1: Current location
+                const locItem = document.createElement('div');
+                locItem.className = 'place-autocomplete-item';
+                locItem.setAttribute('role', 'option');
+                locItem.setAttribute('data-action', 'gps');
+                locItem.innerHTML = `
+                    <div class="place-item-icon">📍</div>
+                    <div class="place-item-details">
+                        <div class="place-item-name">Use current location</div>
+                        <div class="place-item-addr">Acquire device GPS location</div>
+                    </div>
+                `;
+                dropdown.appendChild(locItem);
+
+                // Option 2: Easwari Engineering College
+                const eecItem = document.createElement('div');
+                eecItem.className = 'place-autocomplete-item';
+                eecItem.setAttribute('role', 'option');
+                eecItem.setAttribute('data-action', 'eec');
+                eecItem.innerHTML = `
+                    <div class="place-item-icon">🏛</div>
+                    <div class="place-item-details">
+                        <div class="place-item-name">Easwari Engineering College</div>
+                        <div class="place-item-addr">Bharathi Salai, Ramapuram, Chennai</div>
+                    </div>
+                `;
+                dropdown.appendChild(eecItem);
+
+                // Option 3: Recent picks
+                const recents = getRecentPlaces();
+                if (recents.length > 0) {
+                    const rHdr = document.createElement('div');
+                    rHdr.className = 'place-quick-header';
+                    rHdr.textContent = 'Recent Searches';
+                    dropdown.appendChild(rHdr);
+
+                    recents.forEach((rec, rIdx) => {
+                        const recItem = document.createElement('div');
+                        recItem.className = 'place-autocomplete-item';
+                        recItem.setAttribute('role', 'option');
+                        recItem.setAttribute('data-recent-idx', rIdx);
+                        recItem.innerHTML = `
+                            <div class="place-item-icon">🕒</div>
+                            <div class="place-item-details">
+                                <div class="place-item-name">${esc(rec.name)}</div>
+                                <div class="place-item-addr">${esc(rec.address || '')}</div>
+                            </div>
+                        `;
+                        dropdown.appendChild(recItem);
+                    });
+                }
+
+                dropdown.style.display = 'block';
+                inputEl.setAttribute('aria-expanded', 'true');
+            }
+
+            function renderResults(places) {
+                currentResults = places || [];
+                activeIndex = -1;
+                dropdown.innerHTML = '';
+
+                if (!currentResults || currentResults.length === 0) {
+                    dropdown.innerHTML = `<div class="place-autocomplete-status">No places found. Move the pin on the map to choose a spot.</div>`;
+                    dropdown.style.display = 'block';
+                    inputEl.setAttribute('aria-expanded', 'true');
+                    return;
+                }
+
+                currentResults.slice(0, 6).forEach((place, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'place-autocomplete-item';
+                    item.setAttribute('role', 'option');
+                    item.setAttribute('data-index', idx);
+                    item.innerHTML = `
+                        <div class="place-item-icon">📍</div>
+                        <div class="place-item-details">
+                            <div class="place-item-name"><b>${esc(place.name)}</b></div>
+                            <div class="place-item-addr">${esc(place.address || '')}</div>
+                        </div>
+                    `;
+                    dropdown.appendChild(item);
+                });
+
+                dropdown.style.display = 'block';
+                inputEl.setAttribute('aria-expanded', 'true');
+            }
+
+            inputEl.addEventListener('focus', () => {
+                const val = inputEl.value.trim();
+                if (!val) {
+                    renderEmptyFocusMenu();
+                }
+            });
+
+            inputEl.addEventListener('input', () => {
+                // Clear coordinates on editing
+                delete inputEl.dataset.lat;
+                delete inputEl.dataset.lng;
+                if (options.onClearExtra) options.onClearExtra();
+
+                const query = inputEl.value.trim();
+                if (query.length < 3) {
+                    if (currentAbortController) {
+                        currentAbortController.abort();
+                        currentAbortController = null;
+                    }
+                    if (query.length === 0) {
+                        renderEmptyFocusMenu();
+                    } else {
+                        closeDropdown();
+                    }
+                    return;
+                }
+
+                if (currentAbortController) {
+                    currentAbortController.abort();
+                }
+                currentAbortController = new AbortController();
+                const signal = currentAbortController.signal;
+
+                dropdown.innerHTML = `<div class="place-autocomplete-status">Searching...</div>`;
+                dropdown.style.display = 'block';
+                inputEl.setAttribute('aria-expanded', 'true');
+
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(async () => {
+                    try {
+                        const res = await apiFetch(`/api/places/search?q=${encodeURIComponent(query)}`, {
+                            signal: signal
+                        });
+                        if (signal.aborted) return;
+                        if (res.ok) {
+                            const places = await res.json();
+                            if (signal.aborted) return;
+                            renderResults(places);
+                        } else {
+                            dropdown.innerHTML = `<div class="place-autocomplete-status">No places found. Move the pin on the map to choose a spot.</div>`;
+                        }
+                    } catch (err) {
+                        if (err.name === 'AbortError') return;
+                        dropdown.innerHTML = `<div class="place-autocomplete-status">No places found. Move the pin on the map to choose a spot.</div>`;
+                    }
+                }, 300);
+            });
+
+            dropdown.addEventListener('click', (e) => {
+                const actionItem = e.target.closest('[data-action]');
+                if (actionItem) {
+                    const action = actionItem.getAttribute('data-action');
+                    if (action === 'gps') {
+                        if (!navigator.geolocation) {
+                            showToast('Geolocation is not supported by your browser.', 'warning');
+                            closeDropdown();
+                            return;
+                        }
+                        showToast('Acquiring GPS location...', 'info');
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                const lat = pos.coords.latitude;
+                                const lng = pos.coords.longitude;
+                                reverseGeocode(lat, lng, (addr) => {
+                                    selectPlace({
+                                        name: addr.split(',')[0] || 'Current Location',
+                                        address: addr,
+                                        lat: lat,
+                                        lng: lng
+                                    });
+                                    showToast(`Location set: ${addr}`, 'success');
+                                });
+                            },
+                            (err) => {
+                                showToast(`Could not acquire GPS: ${err.message}`, 'danger');
+                                closeDropdown();
+                            },
+                            { enableHighAccuracy: true, timeout: 8000 }
+                        );
+                    } else if (action === 'eec') {
+                        selectPlace({
+                            name: 'Easwari Engineering College',
+                            address: 'Bharathi Salai, Ramapuram, Chennai',
+                            lat: 13.0315,
+                            lng: 80.1804
+                        });
+                        showToast('Location set to EEC Campus', 'success');
+                    }
+                    return;
+                }
+
+                const recentItem = e.target.closest('[data-recent-idx]');
+                if (recentItem) {
+                    const rIdx = parseInt(recentItem.getAttribute('data-recent-idx'), 10);
+                    const recents = getRecentPlaces();
+                    if (recents[rIdx]) {
+                        selectPlace(recents[rIdx]);
+                    }
+                    return;
+                }
+
+                const item = e.target.closest('[data-index]');
+                if (item) {
+                    const idx = parseInt(item.getAttribute('data-index'), 10);
+                    selectIndex(idx);
+                }
+            });
+
+            inputEl.addEventListener('keydown', (e) => {
+                if (dropdown.style.display === 'none') {
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                        if (!inputEl.value.trim()) renderEmptyFocusMenu();
+                    }
+                    return;
+                }
+
+                const items = dropdown.querySelectorAll('.place-autocomplete-item');
+                if (items.length === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIndex = (activeIndex + 1) % items.length;
+                    items.forEach((it, idx) => {
+                        it.classList.toggle('active', idx === activeIndex);
+                        if (idx === activeIndex) it.scrollIntoView({ block: 'nearest' });
+                    });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIndex = (activeIndex - 1 + items.length) % items.length;
+                    items.forEach((it, idx) => {
+                        it.classList.toggle('active', idx === activeIndex);
+                        if (idx === activeIndex) it.scrollIntoView({ block: 'nearest' });
+                    });
+                } else if (e.key === 'Enter') {
+                    if (activeIndex >= 0 && activeIndex < items.length) {
+                        e.preventDefault();
+                        items[activeIndex].click();
+                    }
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeDropdown();
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!inputEl.contains(e.target) && !dropdown.contains(e.target)) {
+                    closeDropdown();
+                }
+            });
+        }
+
+        // ==========================================
+        // AUTO-REFRESH & DEPARTURE TIME MIN
+        // ==========================================
+
+        function setDepartureTimeMin() {
+            const depInput = document.getElementById('offerDepartureTime');
+            if (!depInput) return;
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            const localIsoMin = `${year}-${month}-${day}T${hours}:${mins}`;
+            depInput.min = localIsoMin;
+            if (!depInput.value || depInput.value < localIsoMin) {
+                const defaultTime = new Date(now.getTime() + 60 * 60 * 1000);
+                const dYear = defaultTime.getFullYear();
+                const dMonth = String(defaultTime.getMonth() + 1).padStart(2, '0');
+                const dDay = String(defaultTime.getDate()).padStart(2, '0');
+                const dHours = String(defaultTime.getHours()).padStart(2, '0');
+                const dMins = String(defaultTime.getMinutes()).padStart(2, '0');
+                depInput.value = `${dYear}-${dMonth}-${dDay}T${dHours}:${dMins}`;
+            }
+        }
+
+        function checkOfferSubmitState() {
+            const pickupInput = document.getElementById('offerPickup');
+            const dropInput = document.getElementById('offerDrop');
+            const btn = document.getElementById('btnPublishRide');
+            if (!btn) return;
+
+            const hasPickup = !!(pickupInput && pickupInput.dataset.lat && pickupInput.dataset.lng);
+            const hasDrop = !!(dropInput && dropInput.dataset.lat && dropInput.dataset.lng);
+
+            if (hasPickup && hasDrop) {
+                btn.disabled = false;
+                btn.title = "Publish Campus Ride";
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+            } else {
+                btn.disabled = true;
+                btn.title = "Select both pickup and drop locations on the map or from suggestions";
+                btn.style.opacity = '0.6';
+                btn.style.cursor = 'not-allowed';
+            }
+        }
+
+        function startRidesPolling() {
+            stopRidesPolling();
+            const findRidesView = document.getElementById('subViewFindRides');
+            if (!findRidesView || findRidesView.style.display === 'none' || document.visibilityState !== 'visible') {
+                return;
+            }
+            ridesPollInterval = setInterval(() => {
+                const view = document.getElementById('subViewFindRides');
+                if (view && view.style.display !== 'none' && document.visibilityState === 'visible') {
+                    loadRides();
+                } else {
+                    stopRidesPolling();
+                }
+            }, 20000);
+        }
+
+        function stopRidesPolling() {
+            if (ridesPollInterval) {
+                clearInterval(ridesPollInterval);
+                ridesPollInterval = null;
+            }
+        }
+
+        function manualRefreshRides() {
+            loadRides();
+            startRidesPolling();
+            showToast('Refreshing available rides...', 'info');
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                const findRidesView = document.getElementById('subViewFindRides');
+                if (findRidesView && findRidesView.style.display !== 'none') {
+                    loadRides();
+                    startRidesPolling();
+                }
+            } else {
+                stopRidesPolling();
+            }
+        });
+
+        function initAppInputsAndAutocomplete() {
+            const dashFrom = document.getElementById('dashFrom');
+            const dashTo = document.getElementById('dashTo');
+            const offerPickup = document.getElementById('offerPickup');
+            const offerDrop = document.getElementById('offerDrop');
+
+            if (dashFrom) {
+                dashFrom.dataset.lat = riderPickupCoords[0];
+                dashFrom.dataset.lng = riderPickupCoords[1];
+            }
+            if (dashTo) {
+                dashTo.dataset.lat = riderDropCoords[0];
+                dashTo.dataset.lng = riderDropCoords[1];
+            }
+            if (offerPickup) {
+                offerPickup.dataset.lat = offerPickupCoords[0];
+                offerPickup.dataset.lng = offerPickupCoords[1];
+            }
+            if (offerDrop) {
+                offerDrop.dataset.lat = offerDropCoords[0];
+                offerDrop.dataset.lng = offerDropCoords[1];
+            }
+
+            attachPlaceAutocomplete(dashFrom, {
+                type: 'PICKUP',
+                getMap: () => ridesMap,
+                setCoords: (coords) => {
+                    riderPickupCoords = [...coords];
+                    if (pickupMarker) pickupMarker.setLatLng(riderPickupCoords);
+                },
+                getCoords: () => riderPickupCoords,
+                getOtherCoords: () => riderDropCoords,
+                updateRoute: () => updateRouteAndEstimates(),
+                onSelectExtra: () => loadRides(),
+                onClearExtra: () => {}
+            });
+
+            attachPlaceAutocomplete(dashTo, {
+                type: 'DROP',
+                getMap: () => ridesMap,
+                setCoords: (coords) => {
+                    riderDropCoords = [...coords];
+                    if (dropMarker) dropMarker.setLatLng(riderDropCoords);
+                },
+                getCoords: () => riderDropCoords,
+                getOtherCoords: () => riderPickupCoords,
+                updateRoute: () => updateRouteAndEstimates(),
+                onSelectExtra: () => loadRides(),
+                onClearExtra: () => {}
+            });
+
+            attachPlaceAutocomplete(offerPickup, {
+                type: 'PICKUP',
+                getMap: () => offerRideMap,
+                setCoords: (coords) => {
+                    offerPickupCoords = [...coords];
+                    if (offerPickupMarker) offerPickupMarker.setLatLng(offerPickupCoords);
+                },
+                getCoords: () => offerPickupCoords,
+                getOtherCoords: () => offerDropCoords,
+                updateRoute: () => updateOfferRouteAndEstimates(),
+                onSelectExtra: () => checkOfferSubmitState(),
+                onClearExtra: () => checkOfferSubmitState()
+            });
+
+            attachPlaceAutocomplete(offerDrop, {
+                type: 'DROP',
+                getMap: () => offerRideMap,
+                setCoords: (coords) => {
+                    offerDropCoords = [...coords];
+                    if (offerDropMarker) offerDropMarker.setLatLng(offerDropCoords);
+                },
+                getCoords: () => offerDropCoords,
+                getOtherCoords: () => offerPickupCoords,
+                updateRoute: () => updateOfferRouteAndEstimates(),
+                onSelectExtra: () => checkOfferSubmitState(),
+                onClearExtra: () => checkOfferSubmitState()
+            });
+
+            setDepartureTimeMin();
+            checkOfferSubmitState();
+        }
+
+        // ==========================================
+        // FIND RIDES MAP (PASSENGER VIEW)
+        // ==========================================
+
+        function initRidesMap() {
+            if (ridesMap) {
+                ridesMap.invalidateSize();
+                return;
+            }
+
+            const container = document.getElementById('ridesMap');
+            if (!container) return;
+
+            ridesMap = L.map('ridesMap').setView(EEC_COORDS, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(ridesMap);
+
+            createPickupMarker(riderPickupCoords);
+            createDropMarker(riderDropCoords);
+            updateRouteAndEstimates();
+
+            rideMarkersGroup = L.layerGroup().addTo(ridesMap);
+            renderMapRides(currentRides);
+
+            ridesMap.on('click', (e) => {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                if (mapPinDropMode === 'PICKUP') {
+                    riderPickupCoords = [lat, lng];
+                    createPickupMarker(riderPickupCoords);
+                    const inp = document.getElementById('dashFrom');
+                    if (inp) {
+                        inp.dataset.lat = lat;
+                        inp.dataset.lng = lng;
+                    }
+                    reverseGeocode(lat, lng, (addr) => {
+                        if (inp) inp.value = addr;
+                        showToast(`Pickup location set: ${addr}`, 'success');
+                        loadRides();
+                    });
+                    exitMapPinMode();
+                } else if (mapPinDropMode === 'DROP') {
+                    riderDropCoords = [lat, lng];
+                    createDropMarker(riderDropCoords);
+                    const inp = document.getElementById('dashTo');
+                    if (inp) {
+                        inp.dataset.lat = lat;
+                        inp.dataset.lng = lng;
+                    }
+                    reverseGeocode(lat, lng, (addr) => {
+                        if (inp) inp.value = addr;
+                        showToast(`Destination set: ${addr}`, 'success');
+                        loadRides();
+                    });
+                    exitMapPinMode();
+                } else {
+                    const dPickup = riderPickupCoords ? getHaversineDistanceKm(lat, lng, riderPickupCoords[0], riderPickupCoords[1]) : Infinity;
+                    const dDrop = riderDropCoords ? getHaversineDistanceKm(lat, lng, riderDropCoords[0], riderDropCoords[1]) : Infinity;
+                    if (dPickup <= dDrop) {
+                        riderPickupCoords = [lat, lng];
+                        createPickupMarker(riderPickupCoords);
+                        const inp = document.getElementById('dashFrom');
+                        if (inp) {
+                            inp.dataset.lat = lat;
+                            inp.dataset.lng = lng;
+                        }
+                        reverseGeocode(lat, lng, (addr) => {
+                            if (inp) inp.value = addr;
+                            showToast(`Pickup location set: ${addr}`, 'success');
+                            loadRides();
+                        });
+                    } else {
+                        riderDropCoords = [lat, lng];
+                        createDropMarker(riderDropCoords);
+                        const inp = document.getElementById('dashTo');
+                        if (inp) {
+                            inp.dataset.lat = lat;
+                            inp.dataset.lng = lng;
+                        }
+                        reverseGeocode(lat, lng, (addr) => {
+                            if (inp) inp.value = addr;
+                            showToast(`Destination set: ${addr}`, 'success');
+                            loadRides();
+                        });
+                    }
+                }
+                updateRouteAndEstimates();
+            });
+        }
+
+        function createPickupMarker(coords) {
+            const icon = createMapPinIcon('PICKUP', 'Drag to adjust Pickup location');
+            if (pickupMarker) {
+                pickupMarker.setLatLng(coords);
+                return;
+            }
+            if (!ridesMap) return;
+            pickupMarker = L.marker(coords, { icon: icon, draggable: true }).addTo(ridesMap);
+            pickupMarker.on('dragend', (e) => {
+                const pos = e.target.getLatLng();
+                riderPickupCoords = [pos.lat, pos.lng];
+                const fromInput = document.getElementById('dashFrom');
+                if (fromInput) {
+                    fromInput.dataset.lat = pos.lat;
+                    fromInput.dataset.lng = pos.lng;
+                }
+                updateRouteAndEstimates();
+                reverseGeocode(pos.lat, pos.lng, (addr) => {
+                    if (fromInput) fromInput.value = addr;
+                    showToast(`Pickup moved: ${addr}`, 'info');
+                    loadRides();
+                });
+            });
+        }
+
+        function createDropMarker(coords) {
+            const icon = createMapPinIcon('DROP', 'Drag to adjust Destination location');
+            if (dropMarker) {
+                dropMarker.setLatLng(coords);
+                return;
+            }
+            if (!ridesMap) return;
+            dropMarker = L.marker(coords, { icon: icon, draggable: true }).addTo(ridesMap);
+            dropMarker.on('dragend', (e) => {
+                const pos = e.target.getLatLng();
+                riderDropCoords = [pos.lat, pos.lng];
+                const toInput = document.getElementById('dashTo');
+                if (toInput) {
+                    toInput.dataset.lat = pos.lat;
+                    toInput.dataset.lng = pos.lng;
+                }
+                updateRouteAndEstimates();
+                reverseGeocode(pos.lat, pos.lng, (addr) => {
+                    if (toInput) toInput.value = addr;
+                    showToast(`Destination moved: ${addr}`, 'info');
+                    loadRides();
+                });
+            });
+        }
+
+        function updateRouteAndEstimates() {
+            if (!riderPickupCoords || !riderDropCoords) return;
+
+            const crowKm = getHaversineDistanceKm(riderPickupCoords[0], riderPickupCoords[1], riderDropCoords[0], riderDropCoords[1]);
+            const roadKm = Math.max(0.6, crowKm * 1.25);
+            const estMinLow = Math.max(3, Math.round(roadKm * 2.2));
+            const estMinHigh = Math.max(5, Math.round(roadKm * 2.8));
+
+            const distEl = document.getElementById('tripDistanceText');
+            const durEl = document.getElementById('tripDurationText');
+            if (distEl) distEl.textContent = `Distance: ${roadKm.toFixed(1)} km`;
+            if (durEl) durEl.textContent = `~${estMinLow} - ${estMinHigh} mins`;
+
+            if (ridesMap) {
+                if (routePolyline) ridesMap.removeLayer(routePolyline);
+                routePolyline = L.polyline([riderPickupCoords, riderDropCoords], {
+                    color: '#2563eb',
+                    weight: 4,
+                    opacity: 0.85,
+                    dashArray: '6, 8',
+                    lineCap: 'round'
+                }).addTo(ridesMap);
+            }
+        }
+
+        function swapLocations() {
+            const fromInput = document.getElementById('dashFrom');
+            const toInput = document.getElementById('dashTo');
+            if (!fromInput || !toInput) return;
+
+            const tempVal = fromInput.value;
+            fromInput.value = toInput.value;
+            toInput.value = tempVal;
+
+            const tempLat = fromInput.dataset.lat;
+            const tempLng = fromInput.dataset.lng;
+            fromInput.dataset.lat = toInput.dataset.lat || '';
+            fromInput.dataset.lng = toInput.dataset.lng || '';
+            toInput.dataset.lat = tempLat || '';
+            toInput.dataset.lng = tempLng || '';
+
+            const tempCoords = riderPickupCoords ? [...riderPickupCoords] : null;
+            riderPickupCoords = riderDropCoords ? [...riderDropCoords] : null;
+            riderDropCoords = tempCoords;
+
+            if (pickupMarker && riderPickupCoords) pickupMarker.setLatLng(riderPickupCoords);
+            if (dropMarker && riderDropCoords) dropMarker.setLatLng(riderDropCoords);
+
+            updateRouteAndEstimates();
+            loadRides();
+            showToast('Pickup and Destination swapped.', 'info');
+        }
+
+        function setQuickHub(name, coords, target) {
+            if (target === 'DROP') {
+                riderDropCoords = [...coords];
+                const toInput = document.getElementById('dashTo');
+                if (toInput) {
+                    toInput.value = name;
+                    toInput.dataset.lat = coords[0];
+                    toInput.dataset.lng = coords[1];
+                }
+                if (dropMarker) dropMarker.setLatLng(riderDropCoords);
+            } else {
+                riderPickupCoords = [...coords];
+                const fromInput = document.getElementById('dashFrom');
+                if (fromInput) {
+                    fromInput.value = name;
+                    fromInput.dataset.lat = coords[0];
+                    fromInput.dataset.lng = coords[1];
+                }
+                if (pickupMarker) pickupMarker.setLatLng(riderPickupCoords);
+            }
+            updateRouteAndEstimates();
+            if (ridesMap) ridesMap.panTo(coords);
+            loadRides();
+            showToast(`${target === 'DROP' ? 'Destination' : 'Pickup'} set to ${name}`, 'success');
+        }
+
+        function handleUseGpsLocation() {
+            if (!navigator.geolocation) {
+                showToast('Geolocation is not supported by your browser.', 'warning');
+                return;
+            }
+            const btn = document.getElementById('btnGpsLocate');
+            if (btn) btn.classList.add('loading');
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    if (btn) btn.classList.remove('loading');
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    riderPickupCoords = [lat, lng];
+                    const fromInput = document.getElementById('dashFrom');
+                    if (fromInput) {
+                        fromInput.dataset.lat = lat;
+                        fromInput.dataset.lng = lng;
+                    }
+
+                    if (ridesMap) {
+                        if (userGpsCircle) ridesMap.removeLayer(userGpsCircle);
+                        userGpsCircle = L.circle([lat, lng], {
+                            radius: Math.min(pos.coords.accuracy, 300),
+                            color: '#16a34a',
+                            fillColor: '#16a34a',
+                            fillOpacity: 0.15,
+                            weight: 1.5
+                        }).addTo(ridesMap);
+
+                        createPickupMarker(riderPickupCoords);
+                        ridesMap.flyTo(riderPickupCoords, 14, { duration: 1.2 });
+                    }
+
+                    reverseGeocode(lat, lng, (addr) => {
+                        if (fromInput) fromInput.value = addr;
+                        showToast(`GPS Location set: ${addr}`, 'success');
+                        loadRides();
+                    });
+                    updateRouteAndEstimates();
+                },
+                (err) => {
+                    if (btn) btn.classList.remove('loading');
+                    showToast(`Could not acquire GPS: ${err.message}`, 'danger');
+                },
+                { enableHighAccuracy: true, timeout: 8000 }
+            );
+        }
+
+        function recenterMapToFit() {
+            if (!ridesMap) return;
+            const points = [];
+            if (riderPickupCoords) points.push(riderPickupCoords);
+            if (riderDropCoords) points.push(riderDropCoords);
+            currentRides.filter(r => r.pickupLat && r.pickupLng).forEach(r => points.push([r.pickupLat, r.pickupLng]));
+            if (points.length > 0) {
+                ridesMap.fitBounds(L.latLngBounds(points), { padding: [50, 50] });
+                showToast('Map centered to fit all available rides', 'info');
+            }
         }
 
         function renderMapRides(ridesToRender) {
@@ -4156,20 +5086,12 @@
             }
         }
 
-        function recenterMapToFit() {
-            if (!ridesMap) return;
-            const points = [pickupCoords, dropCoords];
-            currentRides.filter(r => r.pickupLat && r.pickupLng).forEach(r => points.push([r.pickupLat, r.pickupLng]));
-            ridesMap.fitBounds(L.latLngBounds(points), { padding: [50, 50] });
-            showToast('Map centered to fit all available rides', 'info');
-        }
-
         function toggleMapPinMode(mode) {
             const mapEl = document.getElementById('ridesMap');
             const banner = document.getElementById('mapPinDropBanner');
             const bannerText = document.getElementById('mapPinDropModeText');
             const btnPickup = document.getElementById('btnDropPickupPin');
-            const btnDrop = document.getElementById('btnDropDropPin');
+            const btnDrop = document.getElementById('btnDropDestPin');
 
             if (mapPinDropMode === mode) {
                 exitMapPinMode();
@@ -4197,7 +5119,7 @@
             const mapEl = document.getElementById('ridesMap');
             const banner = document.getElementById('mapPinDropBanner');
             const btnPickup = document.getElementById('btnDropPickupPin');
-            const btnDrop = document.getElementById('btnDropDropPin');
+            const btnDrop = document.getElementById('btnDropDestPin');
 
             if (mapEl) mapEl.classList.remove('crosshair-cursor');
             if (banner) banner.style.display = 'none';
@@ -4205,144 +5127,215 @@
             if (btnDrop) btnDrop.classList.remove('active');
         }
 
-        function handleUseGpsLocation() {
+        // ==========================================
+        // OFFER A RIDE MAP (DRIVER VIEW)
+        // ==========================================
+
+        function initOfferRideMap() {
+            if (offerRideMap) {
+                offerRideMap.invalidateSize();
+                return;
+            }
+
+            const container = document.getElementById('offerRideMap');
+            if (!container) return;
+
+            offerRideMap = L.map('offerRideMap').setView(EEC_COORDS, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(offerRideMap);
+
+            createOfferPickupMarker(offerPickupCoords);
+            createOfferDropMarker(offerDropCoords);
+            updateOfferRouteAndEstimates();
+
+            offerRideMap.on('click', (e) => {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                const dPickup = offerPickupCoords ? getHaversineDistanceKm(lat, lng, offerPickupCoords[0], offerPickupCoords[1]) : Infinity;
+                const dDrop = offerDropCoords ? getHaversineDistanceKm(lat, lng, offerDropCoords[0], offerDropCoords[1]) : Infinity;
+
+                if (dPickup <= dDrop) {
+                    offerPickupCoords = [lat, lng];
+                    createOfferPickupMarker(offerPickupCoords);
+                    const inp = document.getElementById('offerPickup');
+                    if (inp) {
+                        inp.dataset.lat = lat;
+                        inp.dataset.lng = lng;
+                    }
+                    reverseGeocode(lat, lng, (addr) => {
+                        if (inp) inp.value = addr;
+                        showToast(`Driver pickup set: ${addr}`, 'info');
+                    });
+                } else {
+                    offerDropCoords = [lat, lng];
+                    createOfferDropMarker(offerDropCoords);
+                    const inp = document.getElementById('offerDrop');
+                    if (inp) {
+                        inp.dataset.lat = lat;
+                        inp.dataset.lng = lng;
+                    }
+                    reverseGeocode(lat, lng, (addr) => {
+                        if (inp) inp.value = addr;
+                        showToast(`Driver destination set: ${addr}`, 'info');
+                    });
+                }
+                updateOfferRouteAndEstimates();
+                checkOfferSubmitState();
+            });
+        }
+
+        function createOfferPickupMarker(coords) {
+            const icon = createMapPinIcon('PICKUP', 'Drag to adjust Driver Pickup');
+            if (offerPickupMarker) {
+                offerPickupMarker.setLatLng(coords);
+                return;
+            }
+            if (!offerRideMap) return;
+            offerPickupMarker = L.marker(coords, { icon: icon, draggable: true }).addTo(offerRideMap);
+            offerPickupMarker.on('dragend', (e) => {
+                const pos = e.target.getLatLng();
+                offerPickupCoords = [pos.lat, pos.lng];
+                const inp = document.getElementById('offerPickup');
+                if (inp) {
+                    inp.dataset.lat = pos.lat;
+                    inp.dataset.lng = pos.lng;
+                }
+                updateOfferRouteAndEstimates();
+                checkOfferSubmitState();
+                reverseGeocode(pos.lat, pos.lng, (addr) => {
+                    if (inp) inp.value = addr;
+                    showToast(`Pickup moved: ${addr}`, 'info');
+                });
+            });
+        }
+
+        function createOfferDropMarker(coords) {
+            const icon = createMapPinIcon('DROP', 'Drag to adjust Driver Destination');
+            if (offerDropMarker) {
+                offerDropMarker.setLatLng(coords);
+                return;
+            }
+            if (!offerRideMap) return;
+            offerDropMarker = L.marker(coords, { icon: icon, draggable: true }).addTo(offerRideMap);
+            offerDropMarker.on('dragend', (e) => {
+                const pos = e.target.getLatLng();
+                offerDropCoords = [pos.lat, pos.lng];
+                const inp = document.getElementById('offerDrop');
+                if (inp) {
+                    inp.dataset.lat = pos.lat;
+                    inp.dataset.lng = pos.lng;
+                }
+                updateOfferRouteAndEstimates();
+                checkOfferSubmitState();
+                reverseGeocode(pos.lat, pos.lng, (addr) => {
+                    if (inp) inp.value = addr;
+                    showToast(`Destination moved: ${addr}`, 'info');
+                });
+            });
+        }
+
+        function updateOfferRouteAndEstimates() {
+            if (!offerPickupCoords || !offerDropCoords) return;
+            const crowKm = getHaversineDistanceKm(offerPickupCoords[0], offerPickupCoords[1], offerDropCoords[0], offerDropCoords[1]);
+            const roadKm = Math.max(0.6, crowKm * 1.25);
+            const estMin = Math.max(3, Math.round(roadKm * 2.5));
+
+            const badge = document.getElementById('offerMapRouteBadge');
+            if (badge) badge.textContent = `📍 Route: approx. ${roadKm.toFixed(1)} km (~${estMin} mins)`;
+
+            if (offerRideMap) {
+                if (offerRoutePolyline) offerRideMap.removeLayer(offerRoutePolyline);
+                offerRoutePolyline = L.polyline([offerPickupCoords, offerDropCoords], {
+                    color: '#2563eb',
+                    weight: 4,
+                    opacity: 0.85,
+                    dashArray: '6, 8',
+                    lineCap: 'round'
+                }).addTo(offerRideMap);
+            }
+        }
+
+        function swapOfferLocations() {
+            const pickupInput = document.getElementById('offerPickup');
+            const dropInput = document.getElementById('offerDrop');
+            if (!pickupInput || !dropInput) return;
+
+            const tempVal = pickupInput.value;
+            pickupInput.value = dropInput.value;
+            dropInput.value = tempVal;
+
+            const tempLat = pickupInput.dataset.lat;
+            const tempLng = pickupInput.dataset.lng;
+            pickupInput.dataset.lat = dropInput.dataset.lat || '';
+            pickupInput.dataset.lng = dropInput.dataset.lng || '';
+            dropInput.dataset.lat = tempLat || '';
+            dropInput.dataset.lng = tempLng || '';
+
+            const tempCoords = offerPickupCoords ? [...offerPickupCoords] : null;
+            offerPickupCoords = offerDropCoords ? [...offerDropCoords] : null;
+            offerDropCoords = tempCoords;
+
+            if (offerPickupMarker && offerPickupCoords) offerPickupMarker.setLatLng(offerPickupCoords);
+            if (offerDropMarker && offerDropCoords) offerDropMarker.setLatLng(offerDropCoords);
+
+            updateOfferRouteAndEstimates();
+            checkOfferSubmitState();
+            showToast('Pickup and Destination swapped.', 'info');
+        }
+
+        function handleOfferUseGps() {
             if (!navigator.geolocation) {
                 showToast('Geolocation is not supported by your browser.', 'warning');
                 return;
             }
-            const btn = document.getElementById('btnGpsLocate');
-            if (btn) btn.classList.add('loading');
-
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                    if (btn) btn.classList.remove('loading');
                     const lat = pos.coords.latitude;
                     const lng = pos.coords.longitude;
-                    const acc = pos.coords.accuracy;
-                    pickupCoords = [lat, lng];
-
-                    if (ridesMap) {
-                        if (userGpsCircle) ridesMap.removeLayer(userGpsCircle);
-                        userGpsCircle = L.circle([lat, lng], {
-                            radius: Math.min(acc, 300),
+                    offerPickupCoords = [lat, lng];
+                    const inp = document.getElementById('offerPickup');
+                    if (inp) {
+                        inp.dataset.lat = lat;
+                        inp.dataset.lng = lng;
+                    }
+                    createOfferPickupMarker(offerPickupCoords);
+                    if (offerRideMap) {
+                        if (offerGpsCircle) offerRideMap.removeLayer(offerGpsCircle);
+                        offerGpsCircle = L.circle([lat, lng], {
+                            radius: Math.min(pos.coords.accuracy, 300),
                             color: '#16a34a',
                             fillColor: '#16a34a',
                             fillOpacity: 0.15,
                             weight: 1.5
-                        }).addTo(ridesMap);
-
-                        createPickupMarker(pickupCoords);
-                        ridesMap.flyTo(pickupCoords, 14, { duration: 1.2 });
+                        }).addTo(offerRideMap);
+                        offerRideMap.flyTo(offerPickupCoords, 14, { duration: 1.2 });
                     }
-
                     reverseGeocode(lat, lng, (addr) => {
-                        const fromInput = document.getElementById('dashFrom');
-                        if (fromInput) fromInput.value = addr;
-                        const offerPickup = document.getElementById('offerPickup');
-                        if (offerPickup) offerPickup.value = addr;
-                        showToast(`GPS Location set: ${addr}`, 'success');
+                        if (inp) inp.value = addr;
+                        showToast(`Driver pickup GPS set: ${addr}`, 'success');
                     });
-                    updateRouteAndEstimates();
+                    updateOfferRouteAndEstimates();
+                    checkOfferSubmitState();
                 },
                 (err) => {
-                    if (btn) btn.classList.remove('loading');
                     showToast(`Could not acquire GPS: ${err.message}`, 'danger');
                 },
                 { enableHighAccuracy: true, timeout: 8000 }
             );
         }
 
-        function setQuickHub(name, coords, target) {
-            if (target === 'DROP') {
-                dropCoords = [...coords];
-                const toInput = document.getElementById('dashTo');
-                if (toInput) toInput.value = name;
-                if (dropMarker) dropMarker.setLatLng(dropCoords);
-            } else {
-                pickupCoords = [...coords];
-                const fromInput = document.getElementById('dashFrom');
-                if (fromInput) fromInput.value = name;
-                const offerPickup = document.getElementById('offerPickup');
-                if (offerPickup) offerPickup.value = name;
-                if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
+        function recenterOfferMap() {
+            if (!offerRideMap) return;
+            const points = [];
+            if (offerPickupCoords) points.push(offerPickupCoords);
+            if (offerDropCoords) points.push(offerDropCoords);
+            if (points.length > 0) {
+                offerRideMap.fitBounds(L.latLngBounds(points), { padding: [50, 50] });
+                showToast('Map centered to offer route', 'info');
             }
-            updateRouteAndEstimates();
-            if (ridesMap) ridesMap.panTo(coords);
-            showToast(`${target === 'DROP' ? 'Destination' : 'Pickup'} set to ${name}`, 'success');
         }
-
-        function swapLocations() {
-            const fromInput = document.getElementById('dashFrom');
-            const toInput = document.getElementById('dashTo');
-            const tempVal = fromInput.value;
-            fromInput.value = toInput.value;
-            toInput.value = tempVal;
-
-            const tempCoords = [...pickupCoords];
-            pickupCoords = [...dropCoords];
-            dropCoords = tempCoords;
-
-            if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
-            if (dropMarker) dropMarker.setLatLng(dropCoords);
-
-            updateRouteAndEstimates();
-            showToast('Pickup and Destination swapped.', 'info');
-        }
-
-        function setupLocationAutocomplete() {
-            const fromInput = document.getElementById('dashFrom');
-            const toInput = document.getElementById('dashTo');
-            const dropdown = document.getElementById('locationSuggestions');
-
-            function handleInput(inputEl, targetField) {
-                const query = inputEl.value.trim().toLowerCase();
-                if (query.length < 2) {
-                    dropdown.style.display = 'none';
-                    return;
-                }
-
-                const matches = CHENNAI_HUBS.filter(h => 
-                    h.name.toLowerCase().includes(query) || h.area.toLowerCase().includes(query)
-                );
-
-                if (matches.length === 0) {
-                    dropdown.style.display = 'none';
-                    return;
-                }
-
-                dropdown.innerHTML = '';
-                matches.slice(0, 5).forEach(hub => {
-                    const item = document.createElement('div');
-                    item.className = 'suggestion-item';
-                    item.innerHTML = `
-                        <div class="sugg-main">
-                            <svg class="icon" width="14" height="14" style="color:var(--primary);"><use href="#icon-pin"></use></svg>
-                            <div>
-                                <div>${hub.name}</div>
-                                <div style="font-size:10px; color:var(--text-muted);">${hub.area}</div>
-                            </div>
-                        </div>
-                        <span class="sugg-dist">${hub.tag}</span>
-                    `;
-                    item.onclick = () => {
-                        inputEl.value = `${hub.name}, ${hub.area}`;
-                        dropdown.style.display = 'none';
-                        setQuickHub(`${hub.name}, ${hub.area}`, hub.coords, targetField);
-                    };
-                    dropdown.appendChild(item);
-                });
-                dropdown.style.display = 'block';
-            }
-
-            if (fromInput) fromInput.addEventListener('input', () => handleInput(fromInput, 'PICKUP'));
-            if (toInput) toInput.addEventListener('input', () => handleInput(toInput, 'DROP'));
-
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.location-picker-card')) {
-                    if (dropdown) dropdown.style.display = 'none';
-                }
-            });
-        }
-    </script>
+</script>
 </body>
 </html>
