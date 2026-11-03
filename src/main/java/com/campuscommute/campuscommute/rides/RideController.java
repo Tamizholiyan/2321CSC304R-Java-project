@@ -31,7 +31,7 @@ public class RideController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_DRIVER','ROLE_BOTH')")
+    @PreAuthorize("hasAuthority('ROLE_DRIVER')")
     public ResponseEntity<RideResponse> createRide(
             @AuthenticationPrincipal Long driverId,
             @Valid @RequestBody CreateRideRequest request

@@ -5,6 +5,7 @@ import com.campuscommute.campuscommute.auth.dto.LoginRequest;
 import com.campuscommute.campuscommute.auth.dto.RefreshTokenRequest;
 import com.campuscommute.campuscommute.auth.dto.RegisterRequest;
 import com.campuscommute.campuscommute.auth.dto.UpdateRoleRequest;
+import com.campuscommute.campuscommute.auth.dto.UpdateUpiRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +42,9 @@ public class AuthIntegrationTest {
 
     @Autowired
     private StudentDirectoryRepository studentDirectoryRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @BeforeEach
     void setUp() {
@@ -260,5 +264,131 @@ public class AuthIntegrationTest {
                         .content(objectMapper.writeValueAsString(updateRider)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role", is("RIDER")));
+    }
+
+    @Test
+    @DisplayName("Phase 1: Token refresh after role change issues new JWT carrying the updated role")
+    void testRefreshAfterRoleChangeReturnsNewRole() throws Exception {
+        RegisterRequest regRequest = new RegisterRequest(
+                "310621104001",
+                "9876543210",
+                "securePass123"
+        );
+
+        MvcResult regResult = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(regRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        AuthResponse initialAuth = objectMapper.readValue(
+                regResult.getResponse().getContentAsString(),
+                AuthResponse.class
+        );
+
+        String initialAccess = initialAuth.accessToken();
+        String initialRefresh = initialAuth.refreshToken();
+        assertThat(jwtUtil.extractRole(initialAccess)).isEqualTo(Role.RIDER);
+
+        // Switch role to DRIVER
+        mockMvc.perform(patch("/api/users/me/role")
+                        .header("Authorization", "Bearer " + initialAccess)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateRoleRequest(Role.DRIVER))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role", is("DRIVER")));
+
+        // Client calls POST /api/auth/refresh with the existing refresh token
+        MvcResult refreshResult = mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RefreshTokenRequest(initialRefresh))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.role", is("DRIVER")))
+                .andReturn();
+
+        AuthResponse refreshedAuth = objectMapper.readValue(
+                refreshResult.getResponse().getContentAsString(),
+                AuthResponse.class
+        );
+
+        // The newly minted access token inside the JWT must carry the DRIVER role
+        Role newJwtRole = jwtUtil.extractRole(refreshedAuth.accessToken());
+        assertThat(newJwtRole).isEqualTo(Role.DRIVER);
+    }
+
+    @Test
+    @DisplayName("Phase 1: RegisterRequest validation enforces trimmed 12-digit register number and Indian mobile")
+    void testRegisterRequestValidation() throws Exception {
+        // Less than 12 digits
+        RegisterRequest shortRegNo = new RegisterRequest("31062110400", "9876543210", "Password@123");
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(shortRegNo)))
+                .andExpect(status().isBadRequest());
+
+        // Invalid Indian mobile number (starts with 5)
+        RegisterRequest invalidPhone = new RegisterRequest("310621104001", "5876543210", "Password@123");
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidPhone)))
+                .andExpect(status().isBadRequest());
+
+        // Register number with whitespace should be trimmed and succeed
+        RegisterRequest untrimmedRegNo = new RegisterRequest("  310621104001  ", "  9876543210  ", "Password@123");
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(untrimmedRegNo)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.user.registerNumber", is("310621104001")))
+                .andExpect(jsonPath("$.user.phoneNumber", is("9876543210")));
+    }
+
+    @Test
+    @DisplayName("Phase 1: PATCH /api/users/me/upi updates UPI ID with name@handle format validation")
+    void testUpdateUpiValidationAndSuccess() throws Exception {
+        RegisterRequest regRequest = new RegisterRequest(
+                "310621104001",
+                "9876543210",
+                "securePass123"
+        );
+
+        MvcResult regResult = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(regRequest)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        AuthResponse authResponse = objectMapper.readValue(
+                regResult.getResponse().getContentAsString(),
+                AuthResponse.class
+        );
+        String token = authResponse.accessToken();
+
+        // 1. Initial upiId is null
+        mockMvc.perform(get("/api/users/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.upiId").doesNotExist());
+
+        // 2. Invalid UPI format (no @ handle) returns 400
+        mockMvc.perform(patch("/api/users/me/upi")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateUpiRequest("invalidupi"))))
+                .andExpect(status().isBadRequest());
+
+        // 3. Valid UPI updates successfully
+        mockMvc.perform(patch("/api/users/me/upi")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateUpiRequest("kavitha@oksbi"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.upiId", is("kavitha@oksbi")));
+
+        // 4. Subsequent GET /me includes upiId
+        mockMvc.perform(get("/api/users/me")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.upiId", is("kavitha@oksbi")));
     }
 }

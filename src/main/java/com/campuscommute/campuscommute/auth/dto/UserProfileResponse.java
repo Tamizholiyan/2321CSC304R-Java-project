@@ -11,7 +11,8 @@ public record UserProfileResponse(
         String department,
         Integer yearOfStudy,
         String phoneNumber,
-        Role role
+        Role role,
+        String upiId
 ) {
     public static UserProfileResponse from(User user, StudentDirectory studentDirectory) {
         String fullName = studentDirectory != null ? studentDirectory.getFullName() : null;
@@ -25,7 +26,8 @@ public record UserProfileResponse(
                 department,
                 yearOfStudy,
                 user.getPhoneNumber(),
-                user.getRole()
+                user.getRole(),
+                user.getUpiId()
         );
     }
 }

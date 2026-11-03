@@ -26,7 +26,7 @@ public class BookingController {
     }
 
     @PostMapping("/api/bookings")
-    @PreAuthorize("hasAnyAuthority('ROLE_RIDER', 'ROLE_BOTH')")
+    @PreAuthorize("hasAuthority('ROLE_RIDER')")
     public ResponseEntity<BookingResponse> bookRide(
             @AuthenticationPrincipal Long riderId,
             @RequestParam(value = "rideId", required = false) Long queryRideId,
@@ -41,7 +41,7 @@ public class BookingController {
     }
 
     @GetMapping("/api/bookings/me")
-    @PreAuthorize("hasAnyAuthority('ROLE_RIDER', 'ROLE_BOTH')")
+    @PreAuthorize("hasAuthority('ROLE_RIDER')")
     public ResponseEntity<List<BookingResponse>> getMyBookings(
             @AuthenticationPrincipal Long currentUserId
     ) {
@@ -50,7 +50,7 @@ public class BookingController {
     }
 
     @PatchMapping("/api/bookings/{id}/cancel")
-    @PreAuthorize("hasAnyAuthority('ROLE_RIDER', 'ROLE_BOTH')")
+    @PreAuthorize("hasAuthority('ROLE_RIDER')")
     public ResponseEntity<BookingResponse> cancelBooking(
             @PathVariable("id") Long id,
             @AuthenticationPrincipal Long currentUserId
@@ -60,7 +60,7 @@ public class BookingController {
     }
 
     @GetMapping("/api/rides/{id}/bookings")
-    @PreAuthorize("hasAnyAuthority('ROLE_DRIVER', 'ROLE_BOTH')")
+    @PreAuthorize("hasAuthority('ROLE_DRIVER')")
     public ResponseEntity<List<BookingResponse>> getBookingsForRide(
             @PathVariable("id") Long rideId,
             @AuthenticationPrincipal Long currentUserId
@@ -69,4 +69,3 @@ public class BookingController {
         return ResponseEntity.ok(bookings);
     }
 }
-

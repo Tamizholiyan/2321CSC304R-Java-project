@@ -42,6 +42,9 @@ public class User {
     @Column(name = "role", nullable = false)
     private Role role;
 
+    @Column(name = "upi_id", length = 100)
+    private String upiId;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "register_number", referencedColumnName = "register_number", insertable = false, updatable = false)
     private StudentDirectory studentDirectory;

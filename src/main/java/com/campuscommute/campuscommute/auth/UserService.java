@@ -38,4 +38,17 @@ public class UserService {
 
         return UserProfileResponse.from(user, student);
     }
+
+    @Transactional
+    public UserProfileResponse updateUserUpi(Long userId, String upiId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + userId));
+
+        user.setUpiId(upiId != null ? upiId.trim() : null);
+        user = userRepository.save(user);
+
+        StudentDirectory student = studentDirectoryRepository.findById(user.getRegisterNumber()).orElse(null);
+
+        return UserProfileResponse.from(user, student);
+    }
 }

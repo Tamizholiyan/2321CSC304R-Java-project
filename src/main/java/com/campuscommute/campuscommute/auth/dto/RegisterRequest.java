@@ -1,18 +1,28 @@
 package com.campuscommute.campuscommute.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
         @NotBlank(message = "Register number is required")
-        @Size(max = 12, message = "Register number must not exceed 12 characters")
+        @Pattern(regexp = "^[0-9]{12}$", message = "Register number must be exactly 12 digits")
         String registerNumber,
 
         @NotBlank(message = "Phone number is required")
-        @Size(min = 10, max = 15, message = "Phone number must be between 10 and 15 digits")
+        @Pattern(regexp = "^[6-9][0-9]{9}$", message = "Phone number must be a valid 10-digit Indian mobile number")
         String phoneNumber,
 
         @NotBlank(message = "Password is required")
         @Size(min = 6, message = "Password must be at least 6 characters")
         String password
-) {}
+) {
+    public RegisterRequest {
+        if (registerNumber != null) {
+            registerNumber = registerNumber.trim();
+        }
+        if (phoneNumber != null) {
+            phoneNumber = phoneNumber.trim();
+        }
+    }
+}

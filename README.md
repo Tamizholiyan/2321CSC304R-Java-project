@@ -78,3 +78,4 @@ Tests execute against an isolated in-memory H2 database using test credentials d
 # or on Windows:
 .\mvnw.cmd test
 ```
+

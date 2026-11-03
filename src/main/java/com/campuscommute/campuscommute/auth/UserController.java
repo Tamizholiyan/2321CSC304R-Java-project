@@ -1,6 +1,7 @@
 package com.campuscommute.campuscommute.auth;
 
 import com.campuscommute.campuscommute.auth.dto.UpdateRoleRequest;
+import com.campuscommute.campuscommute.auth.dto.UpdateUpiRequest;
 import com.campuscommute.campuscommute.auth.dto.UserProfileResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,15 @@ public class UserController {
             @Valid @RequestBody UpdateRoleRequest request
     ) {
         UserProfileResponse profile = userService.updateUserRole(userId, request.role());
+        return ResponseEntity.ok(profile);
+    }
+
+    @PatchMapping("/me/upi")
+    public ResponseEntity<UserProfileResponse> updateUpi(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody UpdateUpiRequest request
+    ) {
+        UserProfileResponse profile = userService.updateUserUpi(userId, request.upiId());
         return ResponseEntity.ok(profile);
     }
 }
