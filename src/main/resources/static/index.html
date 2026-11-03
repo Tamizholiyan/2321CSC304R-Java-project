@@ -10,6 +10,9 @@
     <!-- Leaflet CSS for interactive Chennai & EEC map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- SockJS and STOMP for live WebSocket ride tracking -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     
     <style>
         :root {
@@ -2257,6 +2260,13 @@
                                 <label>Year of Study</label>
                                 <span id="profYear">3rd Year</span>
                             </div>
+                            <div class="info-cell" style="grid-column: span 2;">
+                                <label>UPI ID (for peer fuel settlements)</label>
+                                <div style="display: flex; gap: 8px; margin-top: 6px;">
+                                    <input type="text" id="profUpiInput" class="auth-input" placeholder="e.g. name@okhdfcbank" style="font-size: 13px; padding: 7px 12px; flex: 1;">
+                                    <button type="button" id="saveUpiBtn" class="btn btn-primary" onclick="saveUserUpi()" style="padding: 7px 16px; font-size: 13px; white-space: nowrap;">Save UPI</button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Role Switcher Component -->
@@ -2339,7 +2349,7 @@
                                 </div>
                             </div>
 
-                            <!-- Vehicle Model & Seats -->
+                            <!-- Vehicle Model & Plate -->
                             <div class="offer-form-grid" style="margin-top: 12px;">
                                 <div class="form-group">
                                     <label>Vehicle Name & Model</label>
@@ -2347,7 +2357,7 @@
                                         <span class="input-icon">
                                             <svg class="icon" width="16" height="16"><use href="#icon-car"></use></svg>
                                         </span>
-                                        <input type="text" class="auth-input" id="offerVehicleModel" placeholder="e.g. Honda City / Yamaha RayZR" value="Maruti Swift • 18 km/l" required>
+                                        <input type="text" class="auth-input" id="offerVehicleModel" placeholder="e.g. Maruti Swift / Honda Activa" required>
                                     </div>
                                 </div>
 
@@ -2357,36 +2367,49 @@
                                         <span class="input-icon">
                                             <svg class="icon" width="16" height="16"><use href="#icon-shield-check"></use></svg>
                                         </span>
-                                        <input type="text" class="auth-input" id="offerVehiclePlate" placeholder="e.g. TN 09 BX 4521" value="TN 09 BX 4521" required>
+                                        <input type="text" class="auth-input" id="offerVehiclePlate" placeholder="e.g. TN 09 BX 4521" required>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Time & Seats -->
+                            <!-- Mileage & Time -->
                             <div class="offer-form-grid" style="margin-top: 12px;">
+                                <div class="form-group">
+                                    <label>Fuel Mileage (km/l)</label>
+                                    <div class="input-with-icon">
+                                        <span class="input-icon">
+                                            <svg class="icon" width="16" height="16"><use href="#icon-fuel"></use></svg>
+                                        </span>
+                                        <input type="number" step="0.1" min="5" max="120" class="auth-input" id="offerMileage" placeholder="e.g. 18.0" required>
+                                    </div>
+                                </div>
+
                                 <div class="form-group">
                                     <label>Departure Date & Time</label>
                                     <div class="input-with-icon">
                                         <span class="input-icon">
                                             <svg class="icon" width="16" height="16"><use href="#icon-clock"></use></svg>
                                         </span>
-                                        <input type="text" class="auth-input" id="offerTime" value="Today, 08:30 AM" required>
+                                        <input type="datetime-local" class="auth-input" id="offerDepartureTime" required>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div class="form-group">
-                                    <label>Available Seats</label>
-                                    <div class="input-with-icon">
-                                        <span class="input-icon">
-                                            <svg class="icon" width="16" height="16"><use href="#icon-user"></use></svg>
-                                        </span>
-                                        <select class="auth-select" id="offerSeats">
-                                            <option value="1">1 Seat Available</option>
-                                            <option value="2" selected>2 Seats Available</option>
-                                            <option value="3">3 Seats Available</option>
-                                            <option value="4">4 Seats Available</option>
-                                        </select>
-                                    </div>
+                            <!-- Available Seats -->
+                            <div class="form-group" style="margin-top: 12px;">
+                                <label>Available Seats</label>
+                                <div class="input-with-icon">
+                                    <span class="input-icon">
+                                        <svg class="icon" width="16" height="16"><use href="#icon-user"></use></svg>
+                                    </span>
+                                    <select class="auth-select" id="offerSeats">
+                                        <option value="1">1 Seat Available</option>
+                                        <option value="2" selected>2 Seats Available</option>
+                                        <option value="3">3 Seats Available</option>
+                                        <option value="4">4 Seats Available</option>
+                                        <option value="5">5 Seats Available</option>
+                                        <option value="6">6 Seats Available</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -2425,19 +2448,6 @@
                         <!-- Published Rides List -->
                         <div id="driverActiveRidesList">
                             <!-- Populated via JS -->
-                        </div>
-
-                        <!-- Incoming Passenger Requests -->
-                        <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 20px;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                <h3 style="font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
-                                    <span>Incoming Passenger Seat Requests</span>
-                                    <span class="badge-count" id="pendingRequestsCount">1 Pending</span>
-                                </h3>
-                            </div>
-                            <div id="driverPassengerRequestsList">
-                                <!-- Populated dynamically -->
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -2614,13 +2624,19 @@
 
     <!-- SCRIPT LOGIC -->
     <script>
-        // State
+        // ==========================================
+        // STATE MANAGEMENT
+        // ==========================================
         let currentUser = null;
         let accessToken = localStorage.getItem('cc_access_token') || '';
         let refreshToken = localStorage.getItem('cc_refresh_token') || '';
+        let activeCommuteRole = 'RIDER';
+        let currentRides = [];
+        let activeFilterType = 'ALL';
+
         let ridesMap = null;
-        let pickupCoords = [13.0500, 80.2120]; // Default Vadapalani
-        let dropCoords = [13.0315, 80.1804];   // Default EEC
+        let pickupCoords = [13.0359, 80.1568]; // Porur default
+        let dropCoords = [13.0315, 80.1804];   // EEC fixed default
         let pickupMarker = null;
         let dropMarker = null;
         let routePolyline = null;
@@ -2629,7 +2645,18 @@
         let rideMarkersGroup = null;
         let activeSelectedRideId = null;
 
+        // WebSocket & Live Tracking State
+        let stompClient = null;
+        let watchPositionId = null;
+        let activeTrackingSubscription = null;
+        let driverLiveMarker = null;
+
+        // Nominatim Rate-Limiting State
+        let lastNominatimCallTime = 0;
+        let nominatimTimeout = null;
+
         // Transit Hubs & College Landmarks in Chennai
+        const EEC_COORDS = [13.0315, 80.1804];
         const CHENNAI_HUBS = [
             { name: "Easwari Engineering College", area: "Ramapuram, Chennai", coords: [13.0315, 80.1804], tag: "Campus" },
             { name: "Ramapuram Bus Stop", area: "Mount-Poonamallee Rd", coords: [13.0336, 80.1765], tag: "Near Campus" },
@@ -2648,142 +2675,128 @@
             { name: "Chromepet", area: "GST Road, Chennai", coords: [12.9516, 80.1462], tag: "South Suburb" }
         ];
 
-        // Sample Ride Listings (Campus Commute)
-        // Fuel cost is computed dynamically by the system upon ride completion based on distance & mileage.
-        const sampleRides = [
-            { 
-                id: 1, 
-                name: "Arjun S", 
-                type: "CARPOOL", 
-                vehicle: "Honda City • 14 km/l",
-                origin: "Vadapalani", 
-                dest: "Easwari Engineering College", 
-                distanceKm: 8.2,
-                time: "Today, 08:15 AM", 
-                seats: 2, 
-                avatar: "AS", 
-                lat: 13.0500, 
-                lng: 80.2120 
-            },
-            { 
-                id: 2, 
-                name: "Sneha R", 
-                type: "BIKEPOOL", 
-                vehicle: "Yamaha RayZR • 50 km/l",
-                origin: "Saligramam", 
-                dest: "Easwari Engineering College", 
-                distanceKm: 4.8,
-                time: "Today, 08:30 AM", 
-                seats: 1, 
-                avatar: "SR", 
-                lat: 13.0450, 
-                lng: 80.2010 
-            },
-            { 
-                id: 3, 
-                name: "Karthik M", 
-                type: "CARPOOL", 
-                vehicle: "Maruti Swift • 18 km/l",
-                origin: "Anna Nagar", 
-                dest: "Easwari Engineering College", 
-                distanceKm: 12.4,
-                time: "Today, 08:45 AM", 
-                seats: 3, 
-                avatar: "KM", 
-                lat: 13.0850, 
-                lng: 80.2100 
-            },
-            { 
-                id: 4, 
-                name: "Priya V", 
-                type: "BIKEPOOL", 
-                vehicle: "TVS Jupiter • 45 km/l",
-                origin: "Porur Junction", 
-                dest: "Easwari Engineering College", 
-                distanceKm: 3.2,
-                time: "Today, 09:00 AM", 
-                seats: 1, 
-                avatar: "PV", 
-                lat: 13.0359, 
-                lng: 80.1568 
-            },
-            { 
-                id: 5, 
-                name: "Vigneshwaran K", 
-                type: "CARPOOL", 
-                vehicle: "Hyundai i20 • 16 km/l",
-                origin: "Guindy Metro", 
-                dest: "Easwari Engineering College", 
-                distanceKm: 6.9,
-                time: "Today, 08:20 AM", 
-                seats: 2, 
-                avatar: "VK", 
-                lat: 13.0067, 
-                lng: 80.2023 
-            },
-            { 
-                id: 6, 
-                name: "Rohan Balaji", 
-                type: "CARPOOL", 
-                vehicle: "Tata Nexon • 17 km/l",
-                origin: "Koyambedu CMBT", 
-                dest: "Easwari Engineering College", 
-                distanceKm: 9.8,
-                time: "Today, 08:10 AM", 
-                seats: 3, 
-                avatar: "RB", 
-                lat: 13.0694, 
-                lng: 80.1948 
-            }
-        ];
+        // ==========================================
+        // UTILITIES & HELPERS
+        // ==========================================
 
-        let activeCommuteRole = 'RIDER';
-        let driverRides = [
-            {
-                id: 101,
-                origin: "Porur Junction",
-                dest: "Easwari Engineering College, Ramapuram",
-                time: "Today, 08:30 AM",
-                vehicle: "Maruti Swift • 18 km/l (TN 09 BX 4521)",
-                type: "CARPOOL",
-                seatsAvailable: 2,
-                totalSeats: 3,
-                status: "ACTIVE"
-            }
-        ];
-        let passengerRequests = [
-            {
-                id: 201,
-                passengerName: "Arun Kumar S",
-                dept: "Information Technology",
-                year: 4,
-                pickup: "Porur Signal Junction",
-                time: "08:30 AM Commute",
-                status: "PENDING"
-            }
-        ];
-        let passengerBookings = [
-            {
-                id: 301,
-                driverName: "Arjun S",
-                vehicle: "Honda City • 14 km/l",
-                type: "CARPOOL",
-                route: "Vadapalani Metro → EEC Campus",
-                time: "Today, 08:15 AM",
-                status: "Confirmed",
-                seatsBooked: 1
-            }
-        ];
+        function esc(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
-        // Init on load
+        function formatYearOfStudy(year) {
+            if (!year) return '-';
+            const s = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };
+            return (s[year] || `${year}th`) + ' Year';
+        }
+
+        function formatDateTime(isoStr) {
+            if (!isoStr) return '-';
+            try {
+                const d = new Date(isoStr);
+                return d.toLocaleDateString('en-IN', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return isoStr;
+            }
+        }
+
+        function getHaversineDistanceKm(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function showToast(msg, type = 'info') {
+            let toast = document.getElementById('globalToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'globalToast';
+                toast.className = 'toast-notification';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = msg;
+            toast.className = `toast-notification ${type} show`;
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        // ==========================================
+        // CENTRALIZED API CLIENT (apiFetch)
+        // ==========================================
+
+        async function apiFetch(path, options = {}) {
+            options.headers = options.headers || {};
+            if (accessToken) {
+                options.headers['Authorization'] = `Bearer ${accessToken}`;
+            }
+            if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+                options.headers['Content-Type'] = 'application/json';
+                options.body = JSON.stringify(options.body);
+            }
+
+            let res = await fetch(path, options);
+
+            // Handle 401 Unauthorized: Attempt automatic token refresh once
+            if (res.status === 401 && refreshToken) {
+                try {
+                    const refreshRes = await fetch('/api/auth/refresh', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refreshToken: refreshToken })
+                    });
+                    if (refreshRes.ok) {
+                        const data = await refreshRes.json();
+                        accessToken = data.accessToken;
+                        if (data.refreshToken) refreshToken = data.refreshToken;
+                        localStorage.setItem('cc_access_token', accessToken);
+                        localStorage.setItem('cc_refresh_token', refreshToken);
+
+                        // Retry original call with refreshed access token
+                        options.headers['Authorization'] = `Bearer ${accessToken}`;
+                        res = await fetch(path, options);
+                    } else {
+                        handleLogout();
+                        throw new Error('Session expired. Please log in again.');
+                    }
+                } catch (e) {
+                    handleLogout();
+                    throw e;
+                }
+            } else if (res.status === 401) {
+                handleLogout();
+                throw new Error('Unauthorized');
+            }
+
+            return res;
+        }
+
+        // ==========================================
+        // INITIALIZATION & LIFECYCLE
+        // ==========================================
+
         window.addEventListener('DOMContentLoaded', () => {
-            renderRides(sampleRides);
             setupLocationAutocomplete();
 
             if (accessToken) {
                 verifyAndLoadUser();
             } else {
                 applyRoleToUI('RIDER');
+                loadRides();
             }
         });
 
@@ -2829,7 +2842,6 @@
         }
 
         function showDashboardTab(tab) {
-            // Guard: ensure user in Driver Mode is directed to Driver views, not passenger Find Rides
             if (activeCommuteRole === 'DRIVER' && tab === 'findRides') {
                 tab = 'offerRide';
             } else if (activeCommuteRole === 'RIDER' && (tab === 'offerRide' || tab === 'myOfferedRides')) {
@@ -2848,6 +2860,7 @@
             if (tab === 'findRides') {
                 document.getElementById('subViewFindRides').style.display = 'grid';
                 setTimeout(() => { initRidesMap(); }, 100);
+                loadRides();
             } else if (tab === 'offerRide') {
                 document.getElementById('subViewOfferRide').style.display = 'block';
             } else if (tab === 'myOfferedRides') {
@@ -2862,7 +2875,10 @@
             }
         }
 
-        // Auth Modal Controls
+        // ==========================================
+        // AUTHENTICATION MODAL & LOGIC
+        // ==========================================
+
         function openAuthModal(mode) {
             hideAlerts();
             document.getElementById('authModal').classList.add('active');
@@ -2913,7 +2929,6 @@
             document.getElementById('authAlertSuccess').style.display = 'none';
         }
 
-        // Real Backend Register API Call
         async function submitRegister() {
             hideAlerts();
             const regNo = document.getElementById('regRegisterNo').value.trim();
@@ -2942,21 +2957,33 @@
                     localStorage.setItem('cc_refresh_token', refreshToken);
                     currentUser = data.user;
 
-                    // If user chose DRIVER during signup, update role
-                    if (role !== 'RIDER') {
-                        await fetch('/api/users/me/role', {
+                    // If user selected DRIVER during signup, persist role change
+                    if (role === 'DRIVER') {
+                        await apiFetch('/api/users/me/role', {
                             method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
-                            body: JSON.stringify({ role: role })
+                            body: { role: 'DRIVER' }
                         });
-                        currentUser.role = role;
+                        // Refresh token to get updated JWT claims
+                        const refRes = await fetch('/api/auth/refresh', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ refreshToken: refreshToken })
+                        });
+                        if (refRes.ok) {
+                            const refData = await refRes.json();
+                            accessToken = refData.accessToken;
+                            if (refData.refreshToken) refreshToken = refData.refreshToken;
+                            localStorage.setItem('cc_access_token', accessToken);
+                            localStorage.setItem('cc_refresh_token', refreshToken);
+                        }
+                        currentUser.role = 'DRIVER';
                     }
 
                     setTimeout(() => {
                         closeAuthModal();
                         setUserAuthenticated(currentUser);
                         navigateTo('dashboard');
-                    }, 1000);
+                    }, 800);
                 } else {
                     showError(data.message || 'Registration failed. Please check your credentials.');
                 }
@@ -2968,7 +2995,6 @@
             }
         }
 
-        // Real Backend Login API Call
         async function submitLogin() {
             hideAlerts();
             const phone = document.getElementById('loginPhone').value.trim();
@@ -3011,13 +3037,9 @@
             }
         }
 
-        // Verify existing token and load profile
         async function verifyAndLoadUser() {
             try {
-                const res = await fetch('/api/users/me', {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-
+                const res = await apiFetch('/api/users/me');
                 if (res.ok) {
                     currentUser = await res.json();
                     setUserAuthenticated(currentUser);
@@ -3040,9 +3062,15 @@
 
             updateProfileView();
             applyRoleToUI(user.role || 'RIDER');
+            loadRides();
         }
 
         function handleLogout() {
+            stopDriverGpsBroadcast();
+            if (stompClient && stompClient.connected) {
+                stompClient.disconnect();
+            }
+            stompClient = null;
             accessToken = '';
             refreshToken = '';
             currentUser = null;
@@ -3061,11 +3089,14 @@
             const name = currentUser.fullName || 'Verified Student';
             document.getElementById('profAvatar').textContent = name.charAt(0).toUpperCase();
             document.getElementById('profFullName').textContent = name;
-            document.getElementById('profSubtitle').textContent = `${currentUser.department || 'Department'} • Year ${currentUser.yearOfStudy || 1}`;
+            document.getElementById('profSubtitle').textContent = `${currentUser.department || 'Department'} • ${formatYearOfStudy(currentUser.yearOfStudy)}`;
             document.getElementById('profRegNumber').textContent = currentUser.registerNumber || '-';
             document.getElementById('profPhone').textContent = currentUser.phoneNumber || '-';
             document.getElementById('profDept').textContent = currentUser.department || '-';
-            document.getElementById('profYear').textContent = currentUser.yearOfStudy ? `${currentUser.yearOfStudy}th Year` : '-';
+            document.getElementById('profYear').textContent = formatYearOfStudy(currentUser.yearOfStudy);
+
+            const upiInput = document.getElementById('profUpiInput');
+            if (upiInput) upiInput.value = currentUser.upiId || '';
 
             const isDriver = (currentUser.role || activeCommuteRole) === 'DRIVER';
             const riderBtn = document.getElementById('roleBtnRider');
@@ -3074,74 +3105,251 @@
             if (driverBtn) driverBtn.classList.toggle('active', isDriver);
         }
 
+        async function saveUserUpi() {
+            if (!currentUser) return;
+            const input = document.getElementById('profUpiInput');
+            const upiVal = input ? input.value.trim() : '';
+
+            if (!upiVal || !/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upiVal)) {
+                showToast('Please enter a valid UPI ID (format: name@handle, e.g. student@oksbi)', 'warning');
+                return;
+            }
+
+            try {
+                const res = await apiFetch('/api/users/me/upi', {
+                    method: 'PATCH',
+                    body: { upiId: upiVal }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    currentUser.upiId = data.upiId;
+                    showToast('UPI ID saved successfully!', 'success');
+                } else {
+                    showToast(data.message || 'Failed to update UPI ID.', 'danger');
+                }
+            } catch (err) {
+                showToast(err.message || 'Error updating UPI ID.', 'danger');
+            }
+        }
+
         async function handleRoleUpdate(newRole) {
-            activeCommuteRole = newRole;
-            if (!accessToken) {
-                applyRoleToUI(newRole);
-                showToast(`Switched to ${newRole === 'DRIVER' ? 'Driver Mode (Offer Rides)' : 'Passenger Mode'}!`, 'success');
-                if (newRole === 'DRIVER') {
+            if (!accessToken) return;
+            try {
+                const res = await apiFetch('/api/users/me/role', {
+                    method: 'PATCH',
+                    body: { role: newRole }
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showToast(data.message || 'Failed to update role on server.', 'danger');
+                    return; // Strictly no silent fallback
+                }
+                currentUser = data;
+
+                // Refresh token to get updated JWT claims with new role
+                const refRes = await fetch('/api/auth/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refreshToken: refreshToken })
+                });
+                if (refRes.ok) {
+                    const tokens = await refRes.json();
+                    accessToken = tokens.accessToken;
+                    if (tokens.refreshToken) refreshToken = tokens.refreshToken;
+                    localStorage.setItem('cc_access_token', accessToken);
+                    localStorage.setItem('cc_refresh_token', refreshToken);
+                }
+
+                activeCommuteRole = currentUser.role || newRole;
+                applyRoleToUI(activeCommuteRole);
+                updateProfileView();
+                showToast(`Switched to ${activeCommuteRole === 'DRIVER' ? 'Driver Mode (Vehicle Owner)' : 'Passenger Mode'}!`, 'success');
+
+                if (activeCommuteRole === 'DRIVER') {
                     showDashboardTab('offerRide');
                 } else {
                     showDashboardTab('findRides');
                 }
-                return;
-            }
-            try {
-                const res = await fetch('/api/users/me/role', {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${accessToken}`
-                    },
-                    body: JSON.stringify({ role: newRole })
-                });
-
-                if (res.ok) {
-                    currentUser = await res.json();
-                } else {
-                    if (currentUser) currentUser.role = newRole;
-                }
             } catch (err) {
-                console.warn('Backend role update fallback:', err);
-                if (currentUser) currentUser.role = newRole;
-            }
-            applyRoleToUI(newRole);
-            updateProfileView();
-            showToast(`Switched to ${newRole === 'DRIVER' ? 'Driver Mode (Vehicle Owner)' : 'Passenger Mode'}!`, 'success');
-            if (newRole === 'DRIVER') {
-                showDashboardTab('offerRide');
-            } else {
-                showDashboardTab('findRides');
+                showToast(err.message || 'Error updating role.', 'danger');
             }
         }
 
-        // Render Available Rides (Image 3)
-        // CRITICAL REQUIREMENT: Do NOT display price when booking.
-        // Prices are dynamically computed after ride completion.
+        function applyRoleToUI(role) {
+            activeCommuteRole = role;
+            const isDriver = (role === 'DRIVER');
+
+            // 1. Update Mode Banner at top of dashboard
+            const badgeText = document.getElementById('roleBadgeText');
+            const badgeSub = document.getElementById('roleBadgeSubtitle');
+            const btnSwitch = document.getElementById('btnSwitchMode');
+            const banner = document.getElementById('commuteModeBanner');
+
+            if (badgeText) {
+                badgeText.textContent = isDriver ? 'DRIVER MODE (Vehicle Owner)' : 'PASSENGER MODE';
+                badgeText.style.background = isDriver ? '#16a34a' : 'var(--primary)';
+            }
+            if (badgeSub) {
+                badgeSub.textContent = isDriver 
+                    ? 'Publish empty seats, offer rides to EEC campus, and manage seat requests' 
+                    : 'Search routes, drop pins on map, and book empty seats with verified peers';
+            }
+            if (btnSwitch) {
+                btnSwitch.textContent = isDriver ? 'Switch to Passenger Mode ⇄' : 'Switch to Driver Mode ⇄';
+            }
+            if (banner) {
+                banner.style.background = isDriver 
+                    ? 'linear-gradient(135deg, #064e3b, #0f172a)' 
+                    : 'linear-gradient(135deg, #1e293b, #0f172a)';
+            }
+
+            // 2. Replace Sidebar Menu buttons
+            const sidebarMenu = document.getElementById('sidebarMenu');
+            if (sidebarMenu) {
+                if (isDriver) {
+                    sidebarMenu.innerHTML = `
+                        <button class="sidebar-item" id="tabOfferRide" onclick="showDashboardTab('offerRide')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-car"></use></svg>
+                            <span>Offer a Ride</span>
+                        </button>
+                        <button class="sidebar-item" id="tabMyOfferedRides" onclick="showDashboardTab('myOfferedRides')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-route"></use></svg>
+                            <span>My Offers</span>
+                        </button>
+                        <button class="sidebar-item" id="tabProfile" onclick="showDashboardTab('profile')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-user"></use></svg>
+                            <span>Profile & Role</span>
+                        </button>
+                    `;
+                } else {
+                    sidebarMenu.innerHTML = `
+                        <button class="sidebar-item" id="tabFindRides" onclick="showDashboardTab('findRides')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-search"></use></svg>
+                            <span>Find Rides</span>
+                        </button>
+                        <button class="sidebar-item" id="tabMyRides" onclick="showDashboardTab('myRides')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-car"></use></svg>
+                            <span>My Bookings</span>
+                        </button>
+                        <button class="sidebar-item" id="tabProfile" onclick="showDashboardTab('profile')">
+                            <svg class="icon" width="18" height="18"><use href="#icon-user"></use></svg>
+                            <span>Profile & Role</span>
+                        </button>
+                    `;
+                }
+            }
+
+            // 3. Update Profile View role buttons
+            const riderBtn = document.getElementById('roleBtnRider');
+            const driverBtn = document.getElementById('roleBtnDriver');
+            if (riderBtn) riderBtn.classList.toggle('active', !isDriver);
+            if (driverBtn) driverBtn.classList.toggle('active', isDriver);
+
+            // 4. Update Landing Page Hero Action Button
+            const heroBtnText = document.getElementById('heroBtnText');
+            const heroBtnIcon = document.getElementById('heroBtnIcon');
+            if (heroBtnText) {
+                heroBtnText.textContent = isDriver ? 'Offer a Ride' : 'Find Rides';
+            }
+            if (heroBtnIcon) {
+                heroBtnIcon.innerHTML = isDriver 
+                    ? '<use href="#icon-car"></use>' 
+                    : '<use href="#icon-search"></use>';
+            }
+        }
+
+        function toggleCommuterMode() {
+            const nextRole = (activeCommuteRole === 'DRIVER') ? 'RIDER' : 'DRIVER';
+            handleRoleUpdate(nextRole);
+        }
+
+        // ==========================================
+        // FIND RIDES & BOOKINGS (REAL API)
+        // ==========================================
+
+        async function loadRides() {
+            try {
+                const startVal = document.getElementById('dashFrom') ? document.getElementById('dashFrom').value.trim() : '';
+                const destVal = document.getElementById('dashTo') ? document.getElementById('dashTo').value.trim() : '';
+                let url = '/api/rides';
+                const params = [];
+                if (startVal) params.push(`startLocation=${encodeURIComponent(startVal)}`);
+                if (destVal) params.push(`destination=${encodeURIComponent(destVal)}`);
+                if (params.length > 0) url += `?${params.join('&')}`;
+
+                const res = await apiFetch(url);
+                if (res.ok) {
+                    currentRides = await res.json();
+                    applyCurrentFilter();
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    showToast(errData.message || 'Could not load rides.', 'danger');
+                }
+            } catch (e) {
+                console.error('Error fetching rides:', e);
+            }
+        }
+
+        function filterRides(type, btn) {
+            document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            activeFilterType = type;
+            applyCurrentFilter();
+        }
+
+        function applyCurrentFilter() {
+            let filtered = currentRides;
+            if (activeFilterType === 'CARPOOL') {
+                filtered = currentRides.filter(r => r.vehicleType === 'FOUR_WHEELER');
+            } else if (activeFilterType === 'BIKEPOOL') {
+                filtered = currentRides.filter(r => r.vehicleType === 'TWO_WHEELER');
+            }
+            renderRides(filtered);
+            if (ridesMap) renderMapRides(filtered);
+        }
+
         function renderRides(rides) {
             const container = document.getElementById('ridesListContainer');
+            if (!container) return;
             container.innerHTML = '';
 
+            if (!rides || rides.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 48px 20px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-lg); border: 1.5px dashed var(--border-color); margin-top: 10px;">
+                        <svg class="icon" width="36" height="36" style="margin-bottom: 8px; color: #94a3b8;"><use href="#icon-car"></use></svg>
+                        <div style="font-weight: 700; font-size: 15px; color: var(--text-main);">No available rides found</div>
+                        <p style="font-size: 13px; margin-top: 4px;">No upcoming rides scheduled for this route yet. Switch to Driver Mode to offer one!</p>
+                    </div>
+                `;
+                return;
+            }
+
             rides.forEach(ride => {
+                const isCarpool = (ride.vehicleType === 'FOUR_WHEELER');
+                const driverInitials = (ride.driverName || 'DR').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                const distText = ride.totalDistanceKm ? `${ride.totalDistanceKm} km` : 'Campus Route';
+
                 const card = document.createElement('div');
                 card.className = 'ride-card';
+                card.id = `rideCard_${ride.rideId}`;
                 card.innerHTML = `
                     <div class="driver-info">
-                        <div class="driver-avatar">${ride.avatar}</div>
+                        <div class="driver-avatar">${esc(driverInitials)}</div>
                         <div class="driver-meta">
                             <h4>
-                                ${ride.name}
+                                ${esc(ride.driverName)}
                                 <span class="verified-badge" title="Verified EEC Student">
                                     <svg class="icon" width="14" height="14" style="color:var(--primary);"><use href="#icon-shield-check"></use></svg>
                                 </span>
-                                <span class="ride-type-tag">${ride.type === 'CARPOOL' ? 'Carpool' : 'Bike-pool'}</span>
+                                <span class="ride-type-tag">${isCarpool ? 'Carpool' : 'Bike-pool'}</span>
                             </h4>
-                            <div class="driver-route">From ${ride.origin} → To ${ride.dest} (${ride.distanceKm} km)</div>
+                            <div class="driver-route">From ${esc(ride.startLocation)} → To ${esc(ride.destination)} (${esc(distText)})</div>
                             <div class="driver-time">
                                 <svg class="icon" width="12" height="12"><use href="#icon-clock"></use></svg>
-                                <span>${ride.time}</span>
+                                <span>${esc(formatDateTime(ride.departureTime))}</span>
                             </div>
-                            <div class="driver-vehicle">${ride.vehicle}</div>
+                            <div class="driver-vehicle">${esc(ride.vehicleModel)} • ${esc(ride.vehiclePlate)}</div>
+                            ${ride.notes ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">📝 ${esc(ride.notes)}</div>` : ''}
                         </div>
                     </div>
                     <div class="ride-price-action">
@@ -3149,51 +3357,550 @@
                             <div>Fair Fuel Split</div>
                             <div class="cost-split-sub">Calculated on completion</div>
                         </div>
-                        <div class="seat-count">${ride.seats} Seat${ride.seats > 1 ? 's' : ''} Left</div>
-                        <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; margin-top: 4px;" onclick="bookRide(${ride.id}, '${ride.name}', '${ride.type}')">Book Seat</button>
+                        <div class="seat-count">${ride.availableSeats} Seat${ride.availableSeats > 1 ? 's' : ''} Left</div>
+                        <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; margin-top: 4px;" data-ride-id="${ride.rideId}">Book Seat</button>
                     </div>
                 `;
+
+                // Add click listener using data-ride-id
+                const bookBtn = card.querySelector('button[data-ride-id]');
+                if (bookBtn) {
+                    bookBtn.addEventListener('click', () => bookRide(ride.rideId));
+                }
+
                 container.appendChild(card);
             });
         }
 
-        function filterRides(type, btn) {
-            document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const filtered = type === 'ALL' ? sampleRides : sampleRides.filter(r => r.type === type);
-            renderRides(filtered);
-            renderMapRides(filtered);
-        }
-
-        function bookRide(id, driverName, rideType) {
+        async function bookRide(rideId) {
             if (!currentUser) {
                 openAuthModal('signup');
                 return;
             }
-            const ride = sampleRides.find(r => r.id === id);
-            if (ride && ride.seats > 0) {
-                ride.seats--;
+            try {
+                const res = await apiFetch(`/api/bookings?rideId=${rideId}`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Seat booked successfully! View details in My Bookings.', 'success');
+                    loadRides(); // Refresh open rides list and seat counts
+                } else {
+                    showToast(data.message || 'Booking failed.', 'danger');
+                }
+            } catch (e) {
+                showToast(e.message || 'Error booking seat.', 'danger');
             }
-            passengerBookings.unshift({
-                id: Date.now(),
-                driverName: driverName,
-                vehicle: ride ? ride.vehicle : (rideType === 'CARPOOL' ? 'Car' : 'Two-Wheeler'),
-                type: rideType,
-                route: ride ? `${ride.origin} → ${ride.dest}` : 'Pickup Location → EEC Campus',
-                time: ride ? ride.time : 'Today, Commute',
-                status: 'Confirmed',
-                seatsBooked: 1
-            });
-            renderRides(sampleRides);
-            if (ridesMap) renderMapRides(sampleRides);
-            showToast(`Seat booked with ${driverName}! Added to My Bookings.`, 'success');
         }
 
         // ==========================================
-        // LEAFLET MAP & RIDE-HAILING GEOLOCATION LOGIC
+        // OFFER A RIDE (DRIVER VIEW)
         // ==========================================
-        const EEC_COORDS = [13.0315, 80.1804]; // Easwari Engineering College coordinates
+
+        function selectVehicleType(type) {
+            const cardCarpool = document.getElementById('vTypeCardCarpool');
+            const cardBikepool = document.getElementById('vTypeCardBikepool');
+            const inputType = document.getElementById('offerVehicleType');
+            const inputModel = document.getElementById('offerVehicleModel');
+            const inputMileage = document.getElementById('offerMileage');
+            const selectSeats = document.getElementById('offerSeats');
+
+            if (type === 'CARPOOL') {
+                if (cardCarpool) cardCarpool.classList.add('active');
+                if (cardBikepool) cardBikepool.classList.remove('active');
+                if (inputType) inputType.value = 'CARPOOL';
+                if (inputModel) inputModel.placeholder = 'e.g. Maruti Swift / Honda City';
+                if (inputMileage && !inputMileage.value) inputMileage.value = '18.0';
+                if (selectSeats) {
+                    selectSeats.innerHTML = `
+                        <option value="1">1 Seat Available</option>
+                        <option value="2" selected>2 Seats Available</option>
+                        <option value="3">3 Seats Available</option>
+                        <option value="4">4 Seats Available</option>
+                        <option value="5">5 Seats Available</option>
+                        <option value="6">6 Seats Available</option>
+                    `;
+                }
+            } else {
+                if (cardBikepool) cardBikepool.classList.add('active');
+                if (cardCarpool) cardCarpool.classList.remove('active');
+                if (inputType) inputType.value = 'BIKEPOOL';
+                if (inputModel) inputModel.placeholder = 'e.g. Yamaha RayZR / Honda Activa';
+                if (inputMileage && !inputMileage.value) inputMileage.value = '45.0';
+                if (selectSeats) {
+                    selectSeats.innerHTML = `
+                        <option value="1" selected>1 Pillion Seat Available</option>
+                    `;
+                }
+            }
+        }
+
+        async function handlePublishRide(e) {
+            e.preventDefault();
+            if (!currentUser) {
+                openAuthModal('signup');
+                return;
+            }
+
+            const pickup = document.getElementById('offerPickup').value.trim();
+            const destination = document.getElementById('offerDestination').value.trim() || 'Easwari Engineering College';
+            const vehicleModel = document.getElementById('offerVehicleModel').value.trim();
+            const vehiclePlate = document.getElementById('offerVehiclePlate').value.trim();
+            const mileage = parseFloat(document.getElementById('offerMileage').value);
+            const departureInput = document.getElementById('offerDepartureTime').value;
+            const seats = parseInt(document.getElementById('offerSeats').value) || 1;
+            const typeChip = document.getElementById('offerVehicleType').value;
+            const notes = document.getElementById('offerNotes').value.trim();
+
+            if (!pickup || !vehicleModel || !vehiclePlate || !departureInput || isNaN(mileage)) {
+                showToast('Please fill all required vehicle, route, and departure fields.', 'warning');
+                return;
+            }
+
+            const depDate = new Date(departureInput);
+            if (depDate <= new Date()) {
+                showToast('Departure time must be in the future.', 'warning');
+                return;
+            }
+
+            if (mileage < 5 || mileage > 120) {
+                showToast('Vehicle mileage must be between 5 and 120 km/l.', 'warning');
+                return;
+            }
+
+            const vType = (typeChip === 'BIKEPOOL') ? 'TWO_WHEELER' : 'FOUR_WHEELER';
+
+            const payload = {
+                startLocation: pickup,
+                destination: destination,
+                vehicleType: vType,
+                vehicleModel: vehicleModel,
+                vehiclePlate: vehiclePlate,
+                departureTime: departureInput,
+                pickupLat: pickupCoords[0],
+                pickupLng: pickupCoords[1],
+                mileageKmpl: mileage,
+                availableSeats: seats,
+                notes: notes || null
+            };
+
+            const btn = document.getElementById('btnPublishRide');
+            btn.disabled = true;
+            btn.textContent = 'Publishing Commute...';
+
+            try {
+                const res = await apiFetch('/api/rides', {
+                    method: 'POST',
+                    body: payload
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Ride published! Your empty seats are now live for campus peers.', 'success');
+                    document.getElementById('offerRideForm').reset();
+                    showDashboardTab('myOfferedRides');
+                } else {
+                    showToast(data.message || 'Failed to publish ride.', 'danger');
+                }
+            } catch (err) {
+                showToast(err.message || 'Error creating ride.', 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Publish Campus Ride';
+            }
+        }
+
+        // ==========================================
+        // MY ACTIVE OFFERS (DRIVER)
+        // ==========================================
+
+        async function renderDriverOfferedRides() {
+            const ridesContainer = document.getElementById('driverActiveRidesList');
+            if (!ridesContainer) return;
+
+            ridesContainer.innerHTML = '<div style="text-align: center; padding: 24px; color: var(--text-muted);">Loading your offers...</div>';
+
+            try {
+                const res = await apiFetch('/api/rides/mine');
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    ridesContainer.innerHTML = `<div style="text-align: center; padding: 24px; color: #ef4444;">${esc(errData.message || 'Could not load your rides.')}</div>`;
+                    return;
+                }
+
+                const rides = await res.json();
+                if (rides.length === 0) {
+                    ridesContainer.innerHTML = `
+                        <div style="text-align: center; padding: 36px 20px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-lg); border: 1.5px dashed var(--border-color); margin-top: 10px;">
+                            <svg class="icon" width="32" height="32" style="margin-bottom: 8px; color: #94a3b8;"><use href="#icon-car"></use></svg>
+                            <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">No active ride offers yet</div>
+                            <p style="font-size: 12px; margin-top: 4px;">Click "+ Offer New Ride" above to post an empty car seat or bike pillion ride.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Fetch confirmed bookings for each ride to show passenger list
+                const cardsHtml = await Promise.all(rides.map(async (r) => {
+                    const isCarpool = (r.vehicleType === 'FOUR_WHEELER');
+                    let bookings = [];
+                    try {
+                        const bRes = await apiFetch(`/api/rides/${r.rideId}/bookings`);
+                        if (bRes.ok) bookings = await bRes.json();
+                    } catch (e) {}
+
+                    const passengersHtml = bookings.length === 0 
+                        ? '<div style="font-size: 12px; color: var(--text-muted); font-style: italic; margin-top: 6px;">No confirmed passengers yet.</div>'
+                        : `<div style="margin-top: 10px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px;">
+                            <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">Confirmed Passengers (${bookings.length}):</div>
+                            ${bookings.map(b => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px dashed #e2e8f0; font-size: 12px;">
+                                    <div>
+                                        <span style="font-weight: 600; color: var(--text-main);">${esc(b.riderName)}</span>
+                                        <span style="color: var(--text-muted);"> (${esc(b.riderDepartment)})</span>
+                                    </div>
+                                    <div style="color: var(--primary); font-weight: 600;">📞 ${esc(b.riderPhone)}</div>
+                                </div>
+                            `).join('')}
+                           </div>`;
+
+                    let actionBtns = '';
+                    if (r.rideStatus === 'SCHEDULED') {
+                        actionBtns = `
+                            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                                <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; background: #16a34a; border-color: #16a34a;" onclick="updateRideStatus(${r.rideId}, 'ONGOING')">Start Ride</button>
+                                <button class="btn btn-outline" style="padding: 6px 14px; font-size: 12px; color: #dc2626; border-color: #fca5a5;" onclick="cancelDriverRide(${r.rideId})">Cancel Ride</button>
+                            </div>
+                        `;
+                    } else if (r.rideStatus === 'ONGOING') {
+                        actionBtns = `
+                            <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px;">
+                                <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; background: #2563eb;" onclick="updateRideStatus(${r.rideId}, 'COMPLETED')">Complete Ride</button>
+                                <span style="font-size: 12px; color: #16a34a; font-weight: 600; display: flex; align-items: center; gap: 4px;">
+                                    <span style="width: 8px; height: 8px; background: #16a34a; border-radius: 50%; display: inline-block;"></span>
+                                    Broadcasting GPS Live
+                                </span>
+                            </div>
+                        `;
+                    } else if (r.rideStatus === 'COMPLETED') {
+                        actionBtns = `
+                            <div style="margin-top: 10px;">
+                                <button class="btn btn-outline" style="padding: 6px 14px; font-size: 12px;" onclick="viewSettlementBreakdown(${r.rideId})">View Settlement</button>
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div class="driver-ride-card" id="driverRideCard_${r.rideId}" style="margin-bottom: 16px;">
+                            <div class="driver-ride-meta">
+                                <h4>
+                                    <span>${isCarpool ? '🚗 Carpool' : '🛵 Bike-pool'}</span>
+                                    <span>•</span>
+                                    <span>${esc(r.startLocation.split(',')[0])} → EEC Campus</span>
+                                    <span class="status-pill ${r.rideStatus.toLowerCase()}">${esc(r.rideStatus)}</span>
+                                </h4>
+                                <div class="driver-ride-sub">
+                                    <span><b>Departure:</b> ${esc(formatDateTime(r.departureTime))}</span>
+                                    <span><b>Vehicle:</b> ${esc(r.vehicleModel)} (${esc(r.vehiclePlate)})</span>
+                                    <span><b>Seats:</b> ${r.availableSeats} seat(s) available</span>
+                                    ${r.notes ? `<span><b>Notes:</b> ${esc(r.notes)}</span>` : ''}
+                                </div>
+                                ${passengersHtml}
+                                <div id="settlementBox_${r.rideId}"></div>
+                            </div>
+                            <div>
+                                ${actionBtns}
+                            </div>
+                        </div>
+                    `;
+                }));
+
+                ridesContainer.innerHTML = cardsHtml.join('');
+            } catch (e) {
+                ridesContainer.innerHTML = `<div style="text-align: center; padding: 24px; color: #ef4444;">Error: ${esc(e.message)}</div>`;
+            }
+        }
+
+        async function updateRideStatus(rideId, newStatus) {
+            try {
+                const res = await apiFetch(`/api/rides/${rideId}/status`, {
+                    method: 'PATCH',
+                    body: { status: newStatus }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(`Ride status updated to ${newStatus}!`, 'success');
+                    if (newStatus === 'ONGOING') {
+                        startDriverGpsBroadcast(rideId);
+                    } else if (newStatus === 'COMPLETED') {
+                        stopDriverGpsBroadcast();
+                    }
+                    renderDriverOfferedRides();
+                } else {
+                    showToast(data.message || 'Failed to update status.', 'danger');
+                }
+            } catch (e) {
+                showToast(e.message || 'Error updating ride status.', 'danger');
+            }
+        }
+
+        async function cancelDriverRide(rideId) {
+            if (!confirm('Are you sure you want to cancel this ride offer? All confirmed bookings will be cancelled.')) return;
+            try {
+                const res = await apiFetch(`/api/rides/${rideId}/status`, {
+                    method: 'PATCH',
+                    body: { status: 'CANCELLED' }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Ride offer cancelled.', 'info');
+                    renderDriverOfferedRides();
+                } else {
+                    showToast(data.message || 'Could not cancel ride.', 'danger');
+                }
+            } catch (e) {
+                showToast(e.message || 'Error cancelling ride.', 'danger');
+            }
+        }
+
+        async function viewSettlementBreakdown(rideId) {
+            const box = document.getElementById(`settlementBox_${rideId}`);
+            if (!box) return;
+            if (box.innerHTML.trim().length > 0) {
+                box.innerHTML = '';
+                return;
+            }
+            box.innerHTML = '<div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;">Loading settlement...</div>';
+            try {
+                const res = await apiFetch(`/api/rides/${rideId}/settlement`);
+                if (res.ok) {
+                    const s = await res.json();
+                    box.innerHTML = `
+                        <div style="margin-top: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 10px; font-size: 12px; color: #166534;">
+                            <div><b>Total Fuel Cost:</b> ₹${s.totalFuelCost} (${s.totalDistanceKm} km @ ${s.mileageKmpl} km/l, ₹${s.ratePerLitre}/L)</div>
+                            <div><b>Occupants:</b> ${s.occupantCount} (Driver + ${s.occupantCount - 1} passenger${s.occupantCount > 2 ? 's' : ''})</div>
+                            <div><b>Per-Person Fuel Share:</b> ₹${s.perPersonShare}</div>
+                            ${s.upiLink ? `<div><b>UPI Pay Deep-Link:</b> Active</div>` : `<div style="color: #991b1b; margin-top: 4px;">No UPI ID configured on your profile. Passengers will pay to phone: ${esc(s.driverPhoneNumber)}</div>`}
+                        </div>
+                    `;
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    box.innerHTML = `<div style="color: #ef4444; font-size: 12px; margin-top: 6px;">${esc(err.message || 'Could not fetch settlement.')}</div>`;
+                }
+            } catch (e) {
+                box.innerHTML = `<div style="color: #ef4444; font-size: 12px; margin-top: 6px;">${esc(e.message)}</div>`;
+            }
+        }
+
+        // ==========================================
+        // MY BOOKINGS (PASSENGER)
+        // ==========================================
+
+        async function renderPassengerBookings() {
+            const container = document.getElementById('passengerBookingsList');
+            if (!container) return;
+
+            container.innerHTML = '<div style="text-align: center; padding: 24px; color: var(--text-muted);">Loading your bookings...</div>';
+
+            try {
+                const res = await apiFetch('/api/bookings/me');
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    container.innerHTML = `<div style="text-align: center; padding: 24px; color: #ef4444;">${esc(errData.message || 'Could not load bookings.')}</div>`;
+                    return;
+                }
+
+                const bookings = await res.json();
+                if (bookings.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-lg); border: 1.5px dashed var(--border-color); margin-top: 10px;">
+                            <svg class="icon" width="32" height="32" style="margin-bottom: 8px; color: #94a3b8;"><use href="#icon-route"></use></svg>
+                            <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">No booked rides yet</div>
+                            <p style="font-size: 12px; margin-top: 4px;">Find available carpools or bike-pools on the map and book your seat.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const cardsHtml = await Promise.all(bookings.map(async (b) => {
+                    const isConfirmed = (b.bookingStatus === 'CONFIRMED');
+                    const isScheduled = (b.rideStatus === 'SCHEDULED');
+                    const isOngoing = (b.rideStatus === 'ONGOING');
+                    const isCompleted = (b.rideStatus === 'COMPLETED');
+
+                    let actionBtn = '';
+                    if (isConfirmed && isScheduled) {
+                        actionBtn = `<button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; color: #dc2626; border-color: #fca5a5;" onclick="cancelPassengerBooking(${b.bookingId})">Cancel Booking</button>`;
+                    } else if (isOngoing) {
+                        actionBtn = `<button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px; background: #2563eb;" onclick="trackRideLocation(${b.rideId})">📍 Track Live</button>`;
+                    }
+
+                    let settlementHtml = '';
+                    if (isCompleted) {
+                        try {
+                            const sRes = await apiFetch(`/api/rides/${b.rideId}/settlement`);
+                            if (sRes.ok) {
+                                const s = await sRes.json();
+                                settlementHtml = `
+                                    <div style="margin-top: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <span style="font-size: 13px; font-weight: 700; color: #065f46;">Ride Completed</span>
+                                            <span style="font-size: 14px; font-weight: 800; color: #047857;">Your Fuel Share: ₹${s.perPersonShare}</span>
+                                        </div>
+                                        <div style="font-size: 12px; color: #065f46;">
+                                            Total Fuel: ₹${s.totalFuelCost} • Distance: ${s.totalDistanceKm} km • Occupants: ${s.occupantCount}
+                                        </div>
+                                        <div style="margin-top: 8px;">
+                                            ${s.upiLink ? `
+                                                <a href="${esc(s.upiLink)}" class="btn btn-primary" style="display: inline-block; padding: 6px 16px; font-size: 12px; background: #059669; border-color: #059669; text-decoration: none;">
+                                                    Pay ₹${s.perPersonShare} via UPI
+                                                </a>
+                                            ` : `
+                                                <span style="font-size: 12px; font-weight: 600; color: var(--text-main);">
+                                                    Pay ₹${s.perPersonShare} directly to driver phone: <b>${esc(s.driverPhoneNumber || '-')}</b>
+                                                </span>
+                                            `}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        } catch (e) {}
+                    }
+
+                    return `
+                        <div class="passenger-booking-card" id="bookingCard_${b.bookingId}">
+                            <div class="passenger-booking-meta">
+                                <h4>
+                                    <span>${esc(b.vehicleModel || 'Campus Commute')}</span>
+                                    <span class="status-pill ${isConfirmed ? 'confirmed' : 'declined'}">${isConfirmed ? '✓ Confirmed' : esc(b.bookingStatus)}</span>
+                                    <span class="status-pill ${b.rideStatus ? b.rideStatus.toLowerCase() : ''}">${esc(b.rideStatus || '')}</span>
+                                </h4>
+                                <div class="passenger-booking-sub">
+                                    <span><b>Route:</b> ${esc(b.startLocation || 'Pickup')} → ${esc(b.destination || 'EEC')}</span>
+                                    <span><b>Driver:</b> ${esc(b.driverName || 'Verified Driver')} ${b.driverPhone ? '• 📞 ' + esc(b.driverPhone) : ''}</span>
+                                    <span><b>Departure:</b> ${esc(formatDateTime(b.departureTime))}</span>
+                                    <span><b>Vehicle Plate:</b> ${esc(b.vehiclePlate || '-')}</span>
+                                </div>
+                                ${settlementHtml}
+                            </div>
+                            <div>
+                                ${actionBtn}
+                            </div>
+                        </div>
+                    `;
+                }));
+
+                container.innerHTML = cardsHtml.join('');
+            } catch (e) {
+                container.innerHTML = `<div style="text-align: center; padding: 24px; color: #ef4444;">Error: ${esc(e.message)}</div>`;
+            }
+        }
+
+        async function cancelPassengerBooking(bookingId) {
+            if (!confirm('Are you sure you want to cancel your seat booking?')) return;
+            try {
+                const res = await apiFetch(`/api/bookings/${bookingId}/cancel`, {
+                    method: 'PATCH'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Seat booking cancelled.', 'info');
+                    renderPassengerBookings();
+                } else {
+                    showToast(data.message || 'Could not cancel booking.', 'danger');
+                }
+            } catch (e) {
+                showToast(e.message || 'Error cancelling booking.', 'danger');
+            }
+        }
+
+        // ==========================================
+        // WEBSOCKET & LIVE GPS TRACKING
+        // ==========================================
+
+        function connectStomp(onConnected, onError) {
+            if (stompClient && stompClient.connected) {
+                if (onConnected) onConnected();
+                return;
+            }
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null; // Suppress verbose log frame spam
+
+            const headers = { 'Authorization': `Bearer ${accessToken}` };
+            stompClient.connect(headers, () => {
+                if (onConnected) onConnected();
+            }, (err) => {
+                console.error('STOMP connection error:', err);
+                if (onError) onError(err);
+            });
+        }
+
+        function startDriverGpsBroadcast(rideId) {
+            connectStomp(() => {
+                if (navigator.geolocation) {
+                    if (watchPositionId) navigator.geolocation.clearWatch(watchPositionId);
+                    watchPositionId = navigator.geolocation.watchPosition((pos) => {
+                        if (stompClient && stompClient.connected) {
+                            stompClient.send(`/app/ride/${rideId}/location`, {}, JSON.stringify({
+                                latitude: pos.coords.latitude,
+                                longitude: pos.coords.longitude,
+                                speedKmph: pos.coords.speed ? (pos.coords.speed * 3.6) : 0,
+                                headingDegrees: pos.coords.heading || 0,
+                                timestamp: Date.now()
+                            }));
+                        }
+                    }, (err) => {
+                        console.warn('Geolocation watchPosition error:', err);
+                    }, { enableHighAccuracy: true });
+                    showToast('GPS live broadcast started for ongoing ride.', 'info');
+                } else {
+                    showToast('Geolocation is not supported by your browser.', 'warning');
+                }
+            });
+        }
+
+        function stopDriverGpsBroadcast() {
+            if (watchPositionId) {
+                navigator.geolocation.clearWatch(watchPositionId);
+                watchPositionId = null;
+            }
+        }
+
+        function trackRideLocation(rideId) {
+            showDashboardTab('findRides');
+            connectStomp(() => {
+                if (activeTrackingSubscription) {
+                    activeTrackingSubscription.unsubscribe();
+                }
+                activeTrackingSubscription = stompClient.subscribe(`/topic/ride/${rideId}/location`, (message) => {
+                    const loc = JSON.parse(message.body);
+                    updateDriverLiveMarker([loc.latitude, loc.longitude]);
+                });
+                showToast(`Connected to live vehicle stream for Ride #${rideId}!`, 'success');
+            }, (err) => {
+                showToast('Could not subscribe to live tracking stream: ' + err, 'danger');
+            });
+        }
+
+        function updateDriverLiveMarker(coords) {
+            if (!ridesMap) return;
+            if (!driverLiveMarker) {
+                const carIcon = L.divIcon({
+                    className: 'live-driver-marker',
+                    html: `<div style="background: var(--primary); color: white; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(29,78,216,0.5); border: 2px solid white; font-size: 16px;">🚗</div>`,
+                    iconSize: [34, 34],
+                    iconAnchor: [17, 17]
+                });
+                driverLiveMarker = L.marker(coords, { icon: carIcon }).addTo(ridesMap);
+            } else {
+                driverLiveMarker.setLatLng(coords);
+            }
+            ridesMap.panTo(coords);
+        }
+
+        // ==========================================
+        // LEAFLET MAP & REVERSE GEOCODING
+        // ==========================================
 
         function initRidesMap() {
             if (ridesMap) {
@@ -3211,11 +3918,9 @@
             createDropMarker(dropCoords);
             updateRouteAndEstimates();
 
-            // Layer group for nearby rides
             rideMarkersGroup = L.layerGroup().addTo(ridesMap);
-            renderMapRides(sampleRides);
+            renderMapRides(currentRides);
 
-            // Click listener for Pin Drop mode
             ridesMap.on('click', (e) => {
                 if (!mapPinDropMode) return;
 
@@ -3226,14 +3931,18 @@
                     pickupCoords = [lat, lng];
                     if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
                     reverseGeocode(lat, lng, (addr) => {
-                        document.getElementById('dashFrom').value = addr;
+                        const fromInput = document.getElementById('dashFrom');
+                        if (fromInput) fromInput.value = addr;
+                        const offerPickup = document.getElementById('offerPickup');
+                        if (offerPickup) offerPickup.value = addr;
                         showToast(`Pickup location set: ${addr}`, 'success');
                     });
                 } else if (mapPinDropMode === 'DROP') {
                     dropCoords = [lat, lng];
                     if (dropMarker) dropMarker.setLatLng(dropCoords);
                     reverseGeocode(lat, lng, (addr) => {
-                        document.getElementById('dashTo').value = addr;
+                        const toInput = document.getElementById('dashTo');
+                        if (toInput) toInput.value = addr;
                         showToast(`Destination set: ${addr}`, 'success');
                     });
                 }
@@ -3272,7 +3981,10 @@
                 pickupCoords = [pos.lat, pos.lng];
                 updateRouteAndEstimates();
                 reverseGeocode(pos.lat, pos.lng, (addr) => {
-                    document.getElementById('dashFrom').value = addr;
+                    const fromInput = document.getElementById('dashFrom');
+                    if (fromInput) fromInput.value = addr;
+                    const offerPickup = document.getElementById('offerPickup');
+                    if (offerPickup) offerPickup.value = addr;
                     showToast(`Pickup moved: ${addr}`, 'info');
                 });
             });
@@ -3308,7 +4020,8 @@
                 dropCoords = [pos.lat, pos.lng];
                 updateRouteAndEstimates();
                 reverseGeocode(pos.lat, pos.lng, (addr) => {
-                    document.getElementById('dashTo').value = addr;
+                    const toInput = document.getElementById('dashTo');
+                    if (toInput) toInput.value = addr;
                     showToast(`Destination moved: ${addr}`, 'info');
                 });
             });
@@ -3341,16 +4054,7 @@
             }
         }
 
-        function getHaversineDistanceKm(lat1, lon1, lat2, lon2) {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        }
-
+        // Debounced Nominatim reverse geocode (at most 1 request per second)
         function reverseGeocode(lat, lng, callback) {
             let nearest = null;
             let minDist = Infinity;
@@ -3362,181 +4066,34 @@
                 }
             });
 
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
-                headers: { 'Accept-Language': 'en' }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.address) {
-                    const a = data.address;
-                    const main = a.neighbourhood || a.suburb || a.residential || a.road || a.quarter || a.city_district || '';
-                    const city = a.city || a.town || 'Chennai';
-                    const readable = main ? `${main}, ${city}` : (data.display_name.split(',').slice(0, 2).join(',') || `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-                    callback(readable);
-                } else if (nearest && minDist < 2.5) {
-                    callback(`${nearest.name}, ${nearest.area}`);
-                } else {
-                    callback(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-                }
-            })
-            .catch(() => {
-                if (nearest && minDist < 2.5) {
-                    callback(`${nearest.name}, ${nearest.area}`);
-                } else {
-                    callback(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-                }
-            });
-        }
+            const now = Date.now();
+            const timeSinceLast = now - lastNominatimCallTime;
+            const delay = timeSinceLast < 1000 ? (1000 - timeSinceLast) : 0;
 
-        function handleUseGpsLocation() {
-            const btn = document.getElementById('btnGpsLocate');
-            if (!navigator.geolocation) {
-                showToast('Geolocation is not supported by your browser.', 'error');
-                return;
-            }
-
-            if (btn) {
-                btn.classList.add('locating');
-                const span = btn.querySelector('span');
-                if (span) span.textContent = 'Locating...';
-            }
-            showToast('Acquiring device GPS coordinates...', 'info');
-
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    if (btn) {
-                        btn.classList.remove('locating');
-                        const span = btn.querySelector('span');
-                        if (span) span.textContent = 'GPS';
+            clearTimeout(nominatimTimeout);
+            nominatimTimeout = setTimeout(() => {
+                lastNominatimCallTime = Date.now();
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+                    headers: { 'Accept-Language': 'en' }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.address) {
+                        const a = data.address;
+                        const road = a.road || a.suburb || a.neighbourhood || '';
+                        const city = a.city || a.county || 'Chennai';
+                        callback(road ? `${road}, ${city}` : (data.display_name ? data.display_name.split(',')[0] : (nearest ? nearest.name : 'Selected Location')));
+                    } else if (nearest) {
+                        callback(nearest.name);
+                    } else {
+                        callback(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
                     }
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    const acc = pos.coords.accuracy || 50;
-
-                    pickupCoords = [lat, lng];
-
-                    if (ridesMap) {
-                        if (userGpsCircle) ridesMap.removeLayer(userGpsCircle);
-                        userGpsCircle = L.circle([lat, lng], {
-                            radius: Math.min(acc, 300),
-                            color: '#2563eb',
-                            fillColor: '#3b82f6',
-                            fillOpacity: 0.15,
-                            weight: 1.5
-                        }).addTo(ridesMap);
-
-                        createPickupMarker(pickupCoords);
-                        ridesMap.flyTo(pickupCoords, 14, { duration: 1.2 });
-                    }
-
-                    updateRouteAndEstimates();
-
-                    document.getElementById('dashFrom').value = 'Detecting address...';
-                    reverseGeocode(lat, lng, (addr) => {
-                        document.getElementById('dashFrom').value = addr;
-                        showToast(`GPS Pickup set: ${addr}`, 'success');
-                    });
-                },
-                (err) => {
-                    if (btn) {
-                        btn.classList.remove('locating');
-                        const span = btn.querySelector('span');
-                        if (span) span.textContent = 'GPS';
-                    }
-                    console.warn("GPS error:", err);
-                    let msg = "Could not fetch GPS. ";
-                    if (err.code === 1) msg += "Permission denied. You can tap 'Pin' to drop a marker on map.";
-                    else if (err.code === 2) msg += "Position unavailable. Please pick location on map.";
-                    else msg += "Request timed out.";
-                    showToast(msg, 'warning');
-                },
-                { enableHighAccuracy: true, timeout: 9000, maximumAge: 10000 }
-            );
-        }
-
-        function toggleMapPinMode(mode) {
-            const mapEl = document.getElementById('ridesMap');
-            const banner = document.getElementById('mapPinDropBanner');
-            const bannerText = document.getElementById('mapPinDropModeText');
-            const btnPickup = document.getElementById('btnDropPickupPin');
-            const btnDrop = document.getElementById('btnDropDestPin');
-            const pickupRow = document.getElementById('pickupFieldRow');
-            const dropRow = document.getElementById('dropFieldRow');
-
-            if (mapPinDropMode === mode) {
-                exitMapPinMode();
-                return;
-            }
-
-            mapPinDropMode = mode;
-            if (mapEl) mapEl.classList.add('crosshair-cursor');
-            if (banner) banner.style.display = 'flex';
-
-            if (mode === 'PICKUP') {
-                if (bannerText) bannerText.textContent = '📍 Tap anywhere on map to set Pickup (or drag green pin)';
-                if (btnPickup) btnPickup.classList.add('active');
-                if (btnDrop) btnDrop.classList.remove('active');
-                if (pickupRow) pickupRow.classList.add('active-pin-mode');
-                if (dropRow) dropRow.classList.remove('active-pin-mode');
-                showToast('Tap on the map to set your Pickup location', 'info');
-            } else {
-                if (bannerText) bannerText.textContent = '🏁 Tap anywhere on map to set Destination (or drag red pin)';
-                if (btnDrop) btnDrop.classList.add('active');
-                if (btnPickup) btnPickup.classList.remove('active');
-                if (dropRow) dropRow.classList.add('active-pin-mode');
-                if (pickupRow) pickupRow.classList.remove('active-pin-mode');
-                showToast('Tap on the map to set your Destination location', 'info');
-            }
-        }
-
-        function exitMapPinMode() {
-            mapPinDropMode = null;
-            const mapEl = document.getElementById('ridesMap');
-            const banner = document.getElementById('mapPinDropBanner');
-            const btnPickup = document.getElementById('btnDropPickupPin');
-            const btnDrop = document.getElementById('btnDropDestPin');
-            const pickupRow = document.getElementById('pickupFieldRow');
-            const dropRow = document.getElementById('dropFieldRow');
-
-            if (mapEl) mapEl.classList.remove('crosshair-cursor');
-            if (banner) banner.style.display = 'none';
-            if (btnPickup) btnPickup.classList.remove('active');
-            if (btnDrop) btnDrop.classList.remove('active');
-            if (pickupRow) pickupRow.classList.remove('active-pin-mode');
-            if (dropRow) dropRow.classList.remove('active-pin-mode');
-        }
-
-        function swapLocations() {
-            const fromInput = document.getElementById('dashFrom');
-            const toInput = document.getElementById('dashTo');
-            const tempVal = fromInput.value;
-            fromInput.value = toInput.value;
-            toInput.value = tempVal;
-
-            const tempCoords = [...pickupCoords];
-            pickupCoords = [...dropCoords];
-            dropCoords = tempCoords;
-
-            if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
-            if (dropMarker) dropMarker.setLatLng(dropCoords);
-
-            updateRouteAndEstimates();
-            showToast('Swapped Pickup and Destination', 'info');
-        }
-
-        function setQuickHub(name, coords, target) {
-            if (target === 'DROP') {
-                dropCoords = [...coords];
-                document.getElementById('dashTo').value = name;
-                if (dropMarker) dropMarker.setLatLng(dropCoords);
-            } else {
-                pickupCoords = [...coords];
-                document.getElementById('dashFrom').value = name;
-                if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
-            }
-            updateRouteAndEstimates();
-            if (ridesMap) ridesMap.panTo(coords);
-            showToast(`${target === 'DROP' ? 'Destination' : 'Pickup'} set to ${name}`, 'success');
+                })
+                .catch(() => {
+                    if (nearest) callback(nearest.name);
+                    else callback(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                });
+            }, delay);
         }
 
         function renderMapRides(ridesToRender) {
@@ -3544,42 +4101,44 @@
             rideMarkersGroup.clearLayers();
 
             ridesToRender.forEach(r => {
-                const isCarpool = r.type === 'CARPOOL';
+                if (!r.pickupLat || !r.pickupLng) return;
+                const isCarpool = (r.vehicleType === 'FOUR_WHEELER');
+                const driverInitials = (r.driverName || 'DR').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
                 const vIcon = L.divIcon({
                     className: 'custom-vehicle-div-icon',
                     html: `
-                        <div class="vehicle-marker-icon ${r.id === activeSelectedRideId ? 'active-ride' : ''}" id="vMarker_${r.id}">
-                            <div class="v-badge ${isCarpool ? 'carpool' : 'bikepool'}">${r.avatar}</div>
-                            <div class="v-info">${r.name.split(' ')[0]} • ${isCarpool ? 'Car' : 'Bike'}</div>
+                        <div class="vehicle-marker-icon ${r.rideId === activeSelectedRideId ? 'active-ride' : ''}" id="vMarker_${r.rideId}">
+                            <div class="v-badge ${isCarpool ? 'carpool' : 'bikepool'}">${esc(driverInitials)}</div>
+                            <div class="v-info">${esc((r.driverName || 'Driver').split(' ')[0])} • ${isCarpool ? 'Car' : 'Bike'}</div>
                         </div>
                     `,
                     iconSize: [100, 30],
                     iconAnchor: [50, 15]
                 });
 
-                const marker = L.marker([r.lat, r.lng], { icon: vIcon });
+                const marker = L.marker([r.pickupLat, r.pickupLng], { icon: vIcon });
                 const popupHtml = `
                     <div class="popup-ride-card">
                         <div class="popup-driver-row">
-                            <div class="popup-driver-avatar">${r.avatar}</div>
+                            <div class="popup-driver-avatar">${esc(driverInitials)}</div>
                             <div class="popup-driver-meta">
-                                <h5>${r.name} <svg class="icon" width="13" height="13" style="color:var(--primary);"><use href="#icon-shield-check"></use></svg></h5>
-                                <p>${r.vehicle}</p>
+                                <h5>${esc(r.driverName)} <svg class="icon" width="13" height="13" style="color:var(--primary);"><use href="#icon-shield-check"></use></svg></h5>
+                                <p>${esc(r.vehicleModel)} • ${esc(r.vehiclePlate)}</p>
                             </div>
                         </div>
                         <div class="popup-route-info">
-                            <div><b>From:</b> ${r.origin}</div>
-                            <div><b>To:</b> ${r.dest} (${r.distanceKm} km)</div>
-                            <div><b>Departure:</b> ${r.time}</div>
-                            <div><b>Seats:</b> ${r.seats} left</div>
+                            <div><b>From:</b> ${esc(r.startLocation)}</div>
+                            <div><b>To:</b> ${esc(r.destination)} (${r.totalDistanceKm ? r.totalDistanceKm + ' km' : '~'})</div>
+                            <div><b>Departure:</b> ${esc(formatDateTime(r.departureTime))}</div>
+                            <div><b>Seats:</b> ${r.availableSeats} left</div>
                         </div>
-                        <button class="popup-book-btn" onclick="bookRide(${r.id}, '${r.name}', '${r.type}')">Book Seat</button>
+                        <button class="popup-book-btn" onclick="bookRide(${r.rideId})">Book Seat</button>
                     </div>
                 `;
                 marker.bindPopup(popupHtml);
                 marker.on('click', () => {
-                    activeSelectedRideId = r.id;
-                    highlightRideCard(r.id);
+                    activeSelectedRideId = r.rideId;
+                    highlightRideCard(r.rideId);
                 });
                 rideMarkersGroup.addLayer(marker);
             });
@@ -3600,9 +4159,134 @@
         function recenterMapToFit() {
             if (!ridesMap) return;
             const points = [pickupCoords, dropCoords];
-            sampleRides.forEach(r => points.push([r.lat, r.lng]));
+            currentRides.filter(r => r.pickupLat && r.pickupLng).forEach(r => points.push([r.pickupLat, r.pickupLng]));
             ridesMap.fitBounds(L.latLngBounds(points), { padding: [50, 50] });
             showToast('Map centered to fit all available rides', 'info');
+        }
+
+        function toggleMapPinMode(mode) {
+            const mapEl = document.getElementById('ridesMap');
+            const banner = document.getElementById('mapPinDropBanner');
+            const bannerText = document.getElementById('mapPinDropModeText');
+            const btnPickup = document.getElementById('btnDropPickupPin');
+            const btnDrop = document.getElementById('btnDropDropPin');
+
+            if (mapPinDropMode === mode) {
+                exitMapPinMode();
+                return;
+            }
+
+            mapPinDropMode = mode;
+            if (mapEl) mapEl.classList.add('crosshair-cursor');
+            if (banner) banner.style.display = 'block';
+
+            if (mode === 'PICKUP') {
+                if (bannerText) bannerText.textContent = '📍 Tap anywhere on map to set Pickup (or drag green pin)';
+                if (btnPickup) btnPickup.classList.add('active');
+                if (btnDrop) btnDrop.classList.remove('active');
+            } else {
+                if (bannerText) bannerText.textContent = '📍 Tap anywhere on map to set Destination (or drag red pin)';
+                if (btnDrop) btnDrop.classList.add('active');
+                if (btnPickup) btnPickup.classList.remove('active');
+            }
+            showToast(`Pin drop mode active: Click map to place ${mode.toLowerCase()} pin`, 'info');
+        }
+
+        function exitMapPinMode() {
+            mapPinDropMode = null;
+            const mapEl = document.getElementById('ridesMap');
+            const banner = document.getElementById('mapPinDropBanner');
+            const btnPickup = document.getElementById('btnDropPickupPin');
+            const btnDrop = document.getElementById('btnDropDropPin');
+
+            if (mapEl) mapEl.classList.remove('crosshair-cursor');
+            if (banner) banner.style.display = 'none';
+            if (btnPickup) btnPickup.classList.remove('active');
+            if (btnDrop) btnDrop.classList.remove('active');
+        }
+
+        function handleUseGpsLocation() {
+            if (!navigator.geolocation) {
+                showToast('Geolocation is not supported by your browser.', 'warning');
+                return;
+            }
+            const btn = document.getElementById('btnGpsLocate');
+            if (btn) btn.classList.add('loading');
+
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    if (btn) btn.classList.remove('loading');
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    const acc = pos.coords.accuracy;
+                    pickupCoords = [lat, lng];
+
+                    if (ridesMap) {
+                        if (userGpsCircle) ridesMap.removeLayer(userGpsCircle);
+                        userGpsCircle = L.circle([lat, lng], {
+                            radius: Math.min(acc, 300),
+                            color: '#16a34a',
+                            fillColor: '#16a34a',
+                            fillOpacity: 0.15,
+                            weight: 1.5
+                        }).addTo(ridesMap);
+
+                        createPickupMarker(pickupCoords);
+                        ridesMap.flyTo(pickupCoords, 14, { duration: 1.2 });
+                    }
+
+                    reverseGeocode(lat, lng, (addr) => {
+                        const fromInput = document.getElementById('dashFrom');
+                        if (fromInput) fromInput.value = addr;
+                        const offerPickup = document.getElementById('offerPickup');
+                        if (offerPickup) offerPickup.value = addr;
+                        showToast(`GPS Location set: ${addr}`, 'success');
+                    });
+                    updateRouteAndEstimates();
+                },
+                (err) => {
+                    if (btn) btn.classList.remove('loading');
+                    showToast(`Could not acquire GPS: ${err.message}`, 'danger');
+                },
+                { enableHighAccuracy: true, timeout: 8000 }
+            );
+        }
+
+        function setQuickHub(name, coords, target) {
+            if (target === 'DROP') {
+                dropCoords = [...coords];
+                const toInput = document.getElementById('dashTo');
+                if (toInput) toInput.value = name;
+                if (dropMarker) dropMarker.setLatLng(dropCoords);
+            } else {
+                pickupCoords = [...coords];
+                const fromInput = document.getElementById('dashFrom');
+                if (fromInput) fromInput.value = name;
+                const offerPickup = document.getElementById('offerPickup');
+                if (offerPickup) offerPickup.value = name;
+                if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
+            }
+            updateRouteAndEstimates();
+            if (ridesMap) ridesMap.panTo(coords);
+            showToast(`${target === 'DROP' ? 'Destination' : 'Pickup'} set to ${name}`, 'success');
+        }
+
+        function swapLocations() {
+            const fromInput = document.getElementById('dashFrom');
+            const toInput = document.getElementById('dashTo');
+            const tempVal = fromInput.value;
+            fromInput.value = toInput.value;
+            toInput.value = tempVal;
+
+            const tempCoords = [...pickupCoords];
+            pickupCoords = [...dropCoords];
+            dropCoords = tempCoords;
+
+            if (pickupMarker) pickupMarker.setLatLng(pickupCoords);
+            if (dropMarker) dropMarker.setLatLng(dropCoords);
+
+            updateRouteAndEstimates();
+            showToast('Pickup and Destination swapped.', 'info');
         }
 
         function setupLocationAutocomplete() {
@@ -3658,382 +4342,6 @@
                     if (dropdown) dropdown.style.display = 'none';
                 }
             });
-        }
-
-        function showToast(msg, type = 'info') {
-            let toast = document.getElementById('globalToast');
-            if (!toast) {
-                toast = document.createElement('div');
-                toast.id = 'globalToast';
-                toast.className = 'toast-notification';
-                document.body.appendChild(toast);
-            }
-            toast.className = `toast-notification ${type} show`;
-            toast.textContent = msg;
-            clearTimeout(toast.timer);
-            toast.timer = setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3500);
-        }
-
-        // ==========================================
-        // COMMUTER ROLE & DRIVER DASHBOARD LOGIC
-        // ==========================================
-        function applyRoleToUI(role) {
-            activeCommuteRole = role;
-            const isDriver = (role === 'DRIVER');
-
-            // 1. Update Mode Banner at top of dashboard
-            const badgeText = document.getElementById('roleBadgeText');
-            const badgeSub = document.getElementById('roleBadgeSubtitle');
-            const btnSwitch = document.getElementById('btnSwitchMode');
-            const banner = document.getElementById('commuteModeBanner');
-
-            if (badgeText) {
-                badgeText.textContent = isDriver ? 'DRIVER MODE (Vehicle Owner)' : 'PASSENGER MODE';
-                badgeText.style.background = isDriver ? '#16a34a' : 'var(--primary)';
-            }
-            if (badgeSub) {
-                badgeSub.textContent = isDriver 
-                    ? 'Publish empty seats, offer rides to EEC campus, and manage seat requests' 
-                    : 'Search routes, drop pins on map, and book empty seats with verified peers';
-            }
-            if (btnSwitch) {
-                btnSwitch.textContent = isDriver ? 'Switch to Passenger Mode ⇄' : 'Switch to Driver Mode ⇄';
-            }
-            if (banner) {
-                banner.style.background = isDriver 
-                    ? 'linear-gradient(135deg, #064e3b, #0f172a)' 
-                    : 'linear-gradient(135deg, #1e293b, #0f172a)';
-            }
-
-            // 2. Dynamically replace Sidebar Menu buttons
-            const sidebarMenu = document.getElementById('sidebarMenu');
-            if (sidebarMenu) {
-                if (isDriver) {
-                    sidebarMenu.innerHTML = `
-                        <button class="sidebar-item" id="tabOfferRide" onclick="showDashboardTab('offerRide')">
-                            <svg class="icon" width="18" height="18"><use href="#icon-car"></use></svg>
-                            <span>Offer a Ride</span>
-                        </button>
-                        <button class="sidebar-item" id="tabMyOfferedRides" onclick="showDashboardTab('myOfferedRides')">
-                            <svg class="icon" width="18" height="18"><use href="#icon-route"></use></svg>
-                            <span>My Offers & Requests</span>
-                        </button>
-                        <button class="sidebar-item" id="tabProfile" onclick="showDashboardTab('profile')">
-                            <svg class="icon" width="18" height="18"><use href="#icon-user"></use></svg>
-                            <span>Profile & Role</span>
-                        </button>
-                    `;
-                } else {
-                    sidebarMenu.innerHTML = `
-                        <button class="sidebar-item" id="tabFindRides" onclick="showDashboardTab('findRides')">
-                            <svg class="icon" width="18" height="18"><use href="#icon-search"></use></svg>
-                            <span>Find Rides</span>
-                        </button>
-                        <button class="sidebar-item" id="tabMyRides" onclick="showDashboardTab('myRides')">
-                            <svg class="icon" width="18" height="18"><use href="#icon-car"></use></svg>
-                            <span>My Bookings</span>
-                        </button>
-                        <button class="sidebar-item" id="tabProfile" onclick="showDashboardTab('profile')">
-                            <svg class="icon" width="18" height="18"><use href="#icon-user"></use></svg>
-                            <span>Profile & Role</span>
-                        </button>
-                    `;
-                }
-            }
-
-            // 3. Update Profile View role buttons
-            const riderBtn = document.getElementById('roleBtnRider');
-            const driverBtn = document.getElementById('roleBtnDriver');
-            if (riderBtn) riderBtn.classList.toggle('active', !isDriver);
-            if (driverBtn) driverBtn.classList.toggle('active', isDriver);
-
-            // 4. Update Landing Page Hero Action Button
-            const heroBtnText = document.getElementById('heroBtnText');
-            const heroBtnIcon = document.getElementById('heroBtnIcon');
-            if (heroBtnText) {
-                heroBtnText.textContent = isDriver ? 'Offer a Ride' : 'Find Rides';
-            }
-            if (heroBtnIcon) {
-                heroBtnIcon.innerHTML = isDriver 
-                    ? '<use href="#icon-car"></use>' 
-                    : '<use href="#icon-search"></use>';
-            }
-        }
-
-        function toggleCommuterMode() {
-            const nextRole = (activeCommuteRole === 'DRIVER') ? 'RIDER' : 'DRIVER';
-            handleRoleUpdate(nextRole);
-        }
-
-        function selectVehicleType(type) {
-            const cardCarpool = document.getElementById('vTypeCardCarpool');
-            const cardBikepool = document.getElementById('vTypeCardBikepool');
-            const inputType = document.getElementById('offerVehicleType');
-            const inputModel = document.getElementById('offerVehicleModel');
-            const selectSeats = document.getElementById('offerSeats');
-
-            if (type === 'CARPOOL') {
-                if (cardCarpool) cardCarpool.classList.add('active');
-                if (cardBikepool) cardBikepool.classList.remove('active');
-                if (inputType) inputType.value = 'CARPOOL';
-                if (inputModel) inputModel.value = 'Maruti Swift • 18 km/l';
-                if (selectSeats) {
-                    selectSeats.innerHTML = `
-                        <option value="1">1 Seat Available</option>
-                        <option value="2" selected>2 Seats Available</option>
-                        <option value="3">3 Seats Available</option>
-                        <option value="4">4 Seats Available</option>
-                    `;
-                }
-            } else {
-                if (cardBikepool) cardBikepool.classList.add('active');
-                if (cardCarpool) cardCarpool.classList.remove('active');
-                if (inputType) inputType.value = 'BIKEPOOL';
-                if (inputModel) inputModel.value = 'Yamaha RayZR • 50 km/l';
-                if (selectSeats) {
-                    selectSeats.innerHTML = `
-                        <option value="1" selected>1 Pillion Seat Available</option>
-                    `;
-                }
-            }
-        }
-
-        function handlePublishRide(e) {
-            e.preventDefault();
-            const pickup = document.getElementById('offerPickup').value.trim();
-            const destination = document.getElementById('offerDestination').value.trim();
-            const vehicleModel = document.getElementById('offerVehicleModel').value.trim();
-            const vehiclePlate = document.getElementById('offerVehiclePlate').value.trim();
-            const departureTime = document.getElementById('offerTime').value.trim();
-            const seats = parseInt(document.getElementById('offerSeats').value) || 1;
-            const type = document.getElementById('offerVehicleType').value;
-            const notes = document.getElementById('offerNotes').value.trim();
-
-            if (!pickup || !vehicleModel || !vehiclePlate) {
-                showToast('Please fill all required vehicle and route fields.', 'warning');
-                return;
-            }
-
-            // Estimate coordinates around pickup
-            let rideCoords = [13.0359, 80.1568]; // Porur default
-            const matchHub = CHENNAI_HUBS.find(h => pickup.toLowerCase().includes(h.name.toLowerCase()));
-            if (matchHub) {
-                rideCoords = matchHub.coords;
-            } else if (pickupCoords) {
-                rideCoords = [...pickupCoords];
-            }
-
-            const crowKm = getHaversineDistanceKm(rideCoords[0], rideCoords[1], EEC_COORDS[0], EEC_COORDS[1]);
-            const distKm = parseFloat(Math.max(1.5, crowKm * 1.25).toFixed(1));
-
-            const driverName = (currentUser && currentUser.fullName) ? currentUser.fullName : "You (Verified Driver)";
-            const initials = driverName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'DR';
-
-            const newRideId = Date.now();
-
-            const newDriverRide = {
-                id: newRideId,
-                origin: pickup,
-                dest: destination,
-                time: departureTime,
-                vehicle: `${vehicleModel} (${vehiclePlate})`,
-                type: type,
-                seatsAvailable: seats,
-                totalSeats: seats,
-                status: "ACTIVE",
-                notes: notes
-            };
-
-            driverRides.unshift(newDriverRide);
-
-            // Also add to passenger search list
-            sampleRides.unshift({
-                id: newRideId,
-                name: driverName,
-                type: type,
-                vehicle: `${vehicleModel} • Fair Fuel Split`,
-                origin: pickup.split(',')[0],
-                dest: "Easwari Engineering College",
-                distanceKm: distKm,
-                time: departureTime,
-                seats: seats,
-                avatar: initials,
-                lat: rideCoords[0],
-                lng: rideCoords[1]
-            });
-
-            renderRides(sampleRides);
-            if (ridesMap) renderMapRides(sampleRides);
-
-            showToast('Ride published! Your empty seats are now live for campus peers.', 'success');
-            showDashboardTab('myOfferedRides');
-        }
-
-        function renderDriverOfferedRides() {
-            const ridesContainer = document.getElementById('driverActiveRidesList');
-            const requestsContainer = document.getElementById('driverPassengerRequestsList');
-            const pendingBadge = document.getElementById('pendingRequestsCount');
-
-            // Render Driver's published rides
-            if (ridesContainer) {
-                if (driverRides.length === 0) {
-                    ridesContainer.innerHTML = `
-                        <div style="text-align: center; padding: 36px 20px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-lg); border: 1.5px dashed var(--border-color); margin-top: 10px;">
-                            <svg class="icon" width="32" height="32" style="margin-bottom: 8px; color: #94a3b8;"><use href="#icon-car"></use></svg>
-                            <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">No active ride offers yet</div>
-                            <p style="font-size: 12px; margin-top: 4px;">Click "+ Offer New Ride" above to post an empty car seat or bike pillion ride.</p>
-                        </div>
-                    `;
-                } else {
-                    ridesContainer.innerHTML = driverRides.map(r => `
-                        <div class="driver-ride-card" id="driverRideCard_${r.id}">
-                            <div class="driver-ride-meta">
-                                <h4>
-                                    <span>${r.type === 'CARPOOL' ? '🚗 Carpool' : '🛵 Bike-pool'}</span>
-                                    <span>•</span>
-                                    <span>${r.origin.split(',')[0]} → EEC Campus</span>
-                                    <span class="status-pill active">${r.status}</span>
-                                </h4>
-                                <div class="driver-ride-sub">
-                                    <span><b>Departure:</b> ${r.time}</span>
-                                    <span><b>Vehicle:</b> ${r.vehicle}</span>
-                                    <span><b>Seats:</b> ${r.seatsAvailable} of ${r.totalSeats} seats open</span>
-                                </div>
-                            </div>
-                            <div>
-                                <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; color: #dc2626; border-color: #fca5a5;" onclick="cancelDriverRide(${r.id})">Cancel Offer</button>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            }
-
-            // Render Incoming Passenger Requests
-            const pendingRequests = passengerRequests.filter(req => req.status === 'PENDING');
-            if (pendingBadge) {
-                pendingBadge.textContent = `${pendingRequests.length} Pending`;
-                pendingBadge.style.display = pendingRequests.length > 0 ? 'inline-block' : 'none';
-            }
-
-            if (requestsContainer) {
-                if (passengerRequests.length === 0) {
-                    requestsContainer.innerHTML = `
-                        <div style="text-align: center; padding: 24px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-md);">
-                            No passenger requests at this moment.
-                        </div>
-                    `;
-                } else {
-                    requestsContainer.innerHTML = passengerRequests.map(req => `
-                        <div class="passenger-request-card" id="reqCard_${req.id}">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div style="width: 40px; height: 40px; border-radius: 50%; background: #eff6ff; color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px;">
-                                    ${req.passengerName.charAt(0)}
-                                </div>
-                                <div>
-                                    <div style="font-size: 14px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
-                                        ${req.passengerName}
-                                        <span class="verified-badge" title="Verified EEC Student">
-                                            <svg class="icon" width="13" height="13" style="color:var(--primary);"><use href="#icon-shield-check"></use></svg>
-                                        </span>
-                                    </div>
-                                    <div style="font-size: 12px; color: var(--text-muted);">${req.dept} • Year ${req.year}</div>
-                                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
-                                        <b>Pickup:</b> ${req.pickup} • <b>Trip:</b> ${req.time}
-                                    </div>
-                                </div>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                ${req.status === 'PENDING' ? `
-                                    <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; border-color: #ef4444; color: #ef4444;" onclick="declinePassengerRequest(${req.id})">Decline</button>
-                                    <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; background: #16a34a; border-color: #16a34a;" onclick="acceptPassengerRequest(${req.id})">Accept Request</button>
-                                ` : req.status === 'ACCEPTED' ? `
-                                    <span style="font-size: 12px; font-weight: 700; color: #16a34a; background: #dcfce7; padding: 4px 12px; border-radius: 9999px;">✓ Confirmed Seat</span>
-                                ` : `
-                                    <span style="font-size: 12px; font-weight: 700; color: #94a3b8; background: #f1f5f9; padding: 4px 12px; border-radius: 9999px;">Declined</span>
-                                `}
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            }
-        }
-
-        function acceptPassengerRequest(requestId) {
-            const req = passengerRequests.find(r => r.id === requestId);
-            if (req) {
-                req.status = 'ACCEPTED';
-                if (driverRides.length > 0 && driverRides[0].seatsAvailable > 0) {
-                    driverRides[0].seatsAvailable--;
-                }
-                renderDriverOfferedRides();
-                showToast(`Accepted seat request from ${req.passengerName}!`, 'success');
-            }
-        }
-
-        function declinePassengerRequest(requestId) {
-            const req = passengerRequests.find(r => r.id === requestId);
-            if (req) {
-                req.status = 'DECLINED';
-                renderDriverOfferedRides();
-                showToast(`Declined request from ${req.passengerName}.`, 'info');
-            }
-        }
-
-        function cancelDriverRide(rideId) {
-            driverRides = driverRides.filter(r => r.id !== rideId);
-            const sIdx = sampleRides.findIndex(r => r.id === rideId);
-            if (sIdx !== -1) sampleRides.splice(sIdx, 1);
-            renderDriverOfferedRides();
-            renderRides(sampleRides);
-            if (ridesMap) renderMapRides(sampleRides);
-            showToast('Ride offer cancelled.', 'info');
-        }
-
-        function renderPassengerBookings() {
-            const container = document.getElementById('passengerBookingsList');
-            if (!container) return;
-
-            if (passengerBookings.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 40px 20px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-lg); border: 1.5px dashed var(--border-color); margin-top: 10px;">
-                        <svg class="icon" width="32" height="32" style="margin-bottom: 8px; color: #94a3b8;"><use href="#icon-route"></use></svg>
-                        <div style="font-weight: 700; font-size: 14px; color: var(--text-main);">No booked rides yet</div>
-                        <p style="font-size: 12px; margin-top: 4px;">Find available carpools or bike-pools on the map and book your seat.</p>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = passengerBookings.map(b => `
-                    <div class="passenger-booking-card" id="bookingCard_${b.id}">
-                        <div class="passenger-booking-meta">
-                            <h4>
-                                <span>${b.type === 'CARPOOL' ? '🚗 Carpool' : '🛵 Bike-pool'} with ${b.driverName}</span>
-                                <span class="status-pill confirmed">✓ ${b.status}</span>
-                            </h4>
-                            <div class="passenger-booking-sub">
-                                <span><b>Route:</b> ${b.route}</span>
-                                <span><b>Vehicle:</b> ${b.vehicle}</span>
-                                <span><b>Departure:</b> ${b.time}</span>
-                                <span><b>Seats:</b> ${b.seatsBooked} Seat</span>
-                            </div>
-                            <div style="font-size: 11px; color: #15803d; margin-top: 6px; display: flex; align-items: center; gap: 4px;">
-                                <svg class="icon" width="13" height="13"><use href="#icon-fuel"></use></svg>
-                                <span>Fuel expense will be calculated by the system on arrival based on actual km.</span>
-                            </div>
-                        </div>
-                        <div>
-                            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; color: #dc2626; border-color: #fca5a5;" onclick="cancelPassengerBooking(${b.id})">Cancel Ride</button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-
-        function cancelPassengerBooking(bookingId) {
-            passengerBookings = passengerBookings.filter(b => b.id !== bookingId);
-            renderPassengerBookings();
-            showToast('Ride booking cancelled.', 'info');
         }
     </script>
 </body>
