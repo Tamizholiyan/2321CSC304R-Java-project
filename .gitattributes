@@ -1,0 +1,10 @@
+# Set default behavior to automatically handle line endings
+* text=auto
+
+# Scripts: ensure mvnw and shell scripts use LF line endings
+mvnw text eol=lf
+*.sh text eol=lf
+
+# Windows command scripts: ensure CRLF line endings
+*.cmd text eol=crlf
+*.bat text eol=crlf
