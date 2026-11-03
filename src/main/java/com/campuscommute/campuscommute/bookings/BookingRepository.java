@@ -10,10 +10,11 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     boolean existsByRideIdAndRiderIdAndBookingStatus(Long rideId, Long riderId, BookingStatus bookingStatus);
 
+    boolean existsByRideIdAndBookingStatus(Long rideId, BookingStatus bookingStatus);
+
     List<Booking> findByRideIdAndBookingStatus(Long rideId, BookingStatus bookingStatus);
 
     List<Booking> findByRiderId(Long riderId);
 
     List<Booking> findByRideId(Long rideId);
 }
-

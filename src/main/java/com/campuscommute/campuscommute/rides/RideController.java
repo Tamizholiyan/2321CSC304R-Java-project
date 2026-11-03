@@ -42,12 +42,22 @@ public class RideController {
 
     @GetMapping
     public ResponseEntity<List<RideResponse>> getRides(
+            @AuthenticationPrincipal Long currentUserId,
             @RequestParam(value = "start", required = false) String start,
             @RequestParam(value = "startLocation", required = false) String startLocation,
             @RequestParam(value = "destination", required = false) String destination
     ) {
         String effectiveStart = (start != null && !start.isBlank()) ? start : startLocation;
-        List<RideResponse> rides = rideService.getRides(effectiveStart, destination);
+        List<RideResponse> rides = rideService.getRides(currentUserId, effectiveStart, destination);
+        return ResponseEntity.ok(rides);
+    }
+
+    @GetMapping("/mine")
+    @PreAuthorize("hasAuthority('ROLE_DRIVER')")
+    public ResponseEntity<List<RideResponse>> getMyRides(
+            @AuthenticationPrincipal Long driverId
+    ) {
+        List<RideResponse> rides = rideService.getMyRides(driverId);
         return ResponseEntity.ok(rides);
     }
 
@@ -60,15 +70,19 @@ public class RideController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<RideResponse> updateRideStatus(
             @PathVariable("id") Long id,
+            @AuthenticationPrincipal Long driverId,
             @Valid @RequestBody UpdateRideStatusRequest request
     ) {
-        RideResponse updated = rideService.updateRideStatus(id, request.status());
+        RideResponse updated = rideService.updateRideStatus(id, driverId, request.status());
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRide(@PathVariable("id") Long id) {
-        rideService.deleteRide(id);
+    public ResponseEntity<Void> deleteRide(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal Long driverId
+    ) {
+        rideService.deleteRide(id, driverId);
         return ResponseEntity.noContent().build();
     }
 }

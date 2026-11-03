@@ -2,6 +2,10 @@ package com.campuscommute.campuscommute.rides;
 
 import com.campuscommute.campuscommute.auth.JwtUtil;
 import com.campuscommute.campuscommute.auth.Role;
+import com.campuscommute.campuscommute.bookings.Booking;
+import com.campuscommute.campuscommute.bookings.BookingRepository;
+import com.campuscommute.campuscommute.bookings.BookingStatus;
+import com.campuscommute.campuscommute.pricing.FuelRateProvider;
 import com.campuscommute.campuscommute.rides.dto.CreateRideRequest;
 import com.campuscommute.campuscommute.rides.dto.UpdateRideStatusRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,22 +50,33 @@ public class RideIntegrationTest {
     private RideRepository rideRepository;
 
     @Autowired
+    private BookingRepository bookingRepository;
+
+    @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private FuelRateProvider fuelRateProvider;
 
     @MockBean
     private GoogleRoutesClient googleRoutesClient;
 
     private String driverToken;
+    private String otherDriverToken;
     private String riderToken;
 
     @BeforeEach
     void setUp() {
+        bookingRepository.deleteAll();
         rideRepository.deleteAll();
 
         driverToken = jwtUtil.generateAccessToken(100L, Role.DRIVER);
+        otherDriverToken = jwtUtil.generateAccessToken(101L, Role.DRIVER);
         riderToken = jwtUtil.generateAccessToken(200L, Role.RIDER);
 
         when(googleRoutesClient.computeDistanceKm(anyString(), anyString(), any(VehicleType.class)))
+                .thenReturn(new BigDecimal("15.75"));
+        when(googleRoutesClient.computeDistanceKm(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new BigDecimal("15.75"));
     }
 
@@ -84,14 +100,20 @@ public class RideIntegrationTest {
     }
 
     @Test
-    @DisplayName("AC2 & AC5: Creating a ride sets status SCHEDULED, seats requested, and server-side computed distance")
+    @DisplayName("AC2 & AC5: Creating a ride sets status SCHEDULED, seats requested, EEC destination, and server distance")
     void testCreateRideSuccess() throws Exception {
         CreateRideRequest request = new CreateRideRequest(
-                "Easwari Engineering College, Ramapuram",
-                "Guindy Metro Station",
+                "Vadapalani Metro",
+                Ride.EEC_NAME,
                 VehicleType.TWO_WHEELER,
+                "Hero Splendor",
+                "TN09AZ9999",
+                LocalDateTime.now().plusHours(3),
+                13.0500,
+                80.2120,
                 new BigDecimal("45.00"),
-                1
+                1,
+                "Near pillar 42"
         );
 
         mockMvc.perform(post("/api/rides")
@@ -101,9 +123,12 @@ public class RideIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.rideId").isNumber())
                 .andExpect(jsonPath("$.driverId", is(100)))
-                .andExpect(jsonPath("$.startLocation", is("Easwari Engineering College, Ramapuram")))
-                .andExpect(jsonPath("$.destination", is("Guindy Metro Station")))
+                .andExpect(jsonPath("$.startLocation", is("Vadapalani Metro")))
+                .andExpect(jsonPath("$.destination", is(Ride.EEC_NAME)))
                 .andExpect(jsonPath("$.vehicleType", is("TWO_WHEELER")))
+                .andExpect(jsonPath("$.vehicleModel", is("Hero Splendor")))
+                .andExpect(jsonPath("$.vehiclePlate", is("TN09AZ9999")))
+                .andExpect(jsonPath("$.notes", is("Near pillar 42")))
                 .andExpect(jsonPath("$.mileageKmpl", is(45.00)))
                 .andExpect(jsonPath("$.availableSeats", is(1)))
                 .andExpect(jsonPath("$.rideStatus", is("SCHEDULED")))
@@ -122,7 +147,8 @@ public class RideIntegrationTest {
         Ride ride = Ride.builder()
                 .driverId(100L)
                 .startLocation("Easwari")
-                .destination("T Nagar")
+                .destination(Ride.EEC_NAME)
+                .departureTime(LocalDateTime.now().plusHours(2))
                 .vehicleType(VehicleType.FOUR_WHEELER)
                 .mileageKmpl(new BigDecimal("15.00"))
                 .totalDistanceKm(new BigDecimal("12.00"))
@@ -175,7 +201,8 @@ public class RideIntegrationTest {
         Ride ongoingRide = Ride.builder()
                 .driverId(100L)
                 .startLocation("EEC")
-                .destination("Tambaram")
+                .destination(Ride.EEC_NAME)
+                .departureTime(LocalDateTime.now().plusHours(1))
                 .vehicleType(VehicleType.FOUR_WHEELER)
                 .mileageKmpl(new BigDecimal("14.00"))
                 .totalDistanceKm(new BigDecimal("20.00"))
@@ -194,12 +221,13 @@ public class RideIntegrationTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/rides/{id} on a SCHEDULED ride returns 204 No Content")
+    @DisplayName("DELETE /api/rides/{id} on a SCHEDULED ride without bookings returns 204 No Content")
     void testDeleteScheduledRideReturns204() throws Exception {
         Ride scheduledRide = Ride.builder()
                 .driverId(100L)
                 .startLocation("EEC")
-                .destination("Tambaram")
+                .destination(Ride.EEC_NAME)
+                .departureTime(LocalDateTime.now().plusHours(2))
                 .vehicleType(VehicleType.FOUR_WHEELER)
                 .mileageKmpl(new BigDecimal("14.00"))
                 .totalDistanceKm(new BigDecimal("20.00"))
@@ -216,59 +244,195 @@ public class RideIntegrationTest {
     }
 
     @Test
-    @DisplayName("GET /api/rides with search filters and GET /api/rides/{id}")
-    void testGetRidesAndGetById() throws Exception {
-        Ride ride1 = Ride.builder()
+    @DisplayName("Phase 2: Ownership - modifying status or deleting a ride as a non-owner returns 403 Forbidden")
+    void testOwnershipSecurityEnforced() throws Exception {
+        Ride ride = Ride.builder()
                 .driverId(100L)
-                .startLocation("Easwari College")
-                .destination("Vadapalani")
-                .vehicleType(VehicleType.TWO_WHEELER)
-                .mileageKmpl(new BigDecimal("40.00"))
-                .totalDistanceKm(new BigDecimal("6.50"))
-                .availableSeats(1)
+                .startLocation("Porur")
+                .destination(Ride.EEC_NAME)
+                .departureTime(LocalDateTime.now().plusHours(2))
+                .vehicleType(VehicleType.FOUR_WHEELER)
+                .mileageKmpl(new BigDecimal("15.00"))
+                .totalDistanceKm(new BigDecimal("10.00"))
+                .availableSeats(3)
                 .rideStatus(RideStatus.SCHEDULED)
                 .build();
+        ride = rideRepository.save(ride);
 
-        Ride ride2 = Ride.builder()
-                .driverId(101L)
-                .startLocation("Tambaram")
-                .destination("Easwari College")
+        // Another driver tries to change status
+        mockMvc.perform(patch("/api/rides/" + ride.getRideId() + "/status")
+                        .header("Authorization", "Bearer " + otherDriverToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateRideStatusRequest(RideStatus.CANCELLED))))
+                .andExpect(status().isForbidden());
+
+        // Another driver tries to delete
+        mockMvc.perform(delete("/api/rides/" + ride.getRideId())
+                        .header("Authorization", "Bearer " + otherDriverToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Phase 2: Delete allowed only when ride has no CONFIRMED bookings, else 409")
+    void testDeleteWithConfirmedBookingsReturns409() throws Exception {
+        Ride ride = Ride.builder()
+                .driverId(100L)
+                .startLocation("Porur")
+                .destination(Ride.EEC_NAME)
+                .departureTime(LocalDateTime.now().plusHours(2))
                 .vehicleType(VehicleType.FOUR_WHEELER)
-                .mileageKmpl(new BigDecimal("16.00"))
-                .totalDistanceKm(new BigDecimal("18.00"))
+                .mileageKmpl(new BigDecimal("15.00"))
+                .totalDistanceKm(new BigDecimal("10.00"))
+                .availableSeats(3)
+                .rideStatus(RideStatus.SCHEDULED)
+                .build();
+        ride = rideRepository.save(ride);
+
+        // Add confirmed booking
+        Booking booking = Booking.builder()
+                .rideId(ride.getRideId())
+                .riderId(200L)
+                .bookingStatus(BookingStatus.CONFIRMED)
+                .bookingTime(LocalDateTime.now())
+                .build();
+        bookingRepository.save(booking);
+
+        mockMvc.perform(delete("/api/rides/" + ride.getRideId())
+                        .header("Authorization", "Bearer " + driverToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message", org.hamcrest.Matchers.containsString("cancel the ride instead")));
+    }
+
+    @Test
+    @DisplayName("Phase 2: Search returns only SCHEDULED rides with future departure and excludes caller's own rides")
+    void testSearchExcludesOwnRidesAndPastDepartures() throws Exception {
+        // Driver 100's ride
+        Ride ownRide = Ride.builder()
+                .driverId(100L)
+                .startLocation("Porur")
+                .destination(Ride.EEC_NAME)
+                .departureTime(LocalDateTime.now().plusHours(2))
+                .vehicleType(VehicleType.FOUR_WHEELER)
+                .mileageKmpl(new BigDecimal("15.00"))
+                .totalDistanceKm(new BigDecimal("10.00"))
                 .availableSeats(3)
                 .rideStatus(RideStatus.SCHEDULED)
                 .build();
 
-        ride1 = rideRepository.save(ride1);
-        ride2 = rideRepository.save(ride2);
+        // Other driver's open ride
+        Ride otherRide = Ride.builder()
+                .driverId(101L)
+                .startLocation("Guindy")
+                .destination(Ride.EEC_NAME)
+                .departureTime(LocalDateTime.now().plusHours(3))
+                .vehicleType(VehicleType.TWO_WHEELER)
+                .mileageKmpl(new BigDecimal("45.00"))
+                .totalDistanceKm(new BigDecimal("8.00"))
+                .availableSeats(1)
+                .rideStatus(RideStatus.SCHEDULED)
+                .build();
 
-        // Get by ID
-        mockMvc.perform(get("/api/rides/" + ride1.getRideId())
-                        .header("Authorization", "Bearer " + riderToken))
+        // Other driver's completed ride (should not be in search)
+        Ride completedRide = Ride.builder()
+                .driverId(101L)
+                .startLocation("Vadapalani")
+                .destination(Ride.EEC_NAME)
+                .departureTime(LocalDateTime.now().plusHours(1))
+                .vehicleType(VehicleType.FOUR_WHEELER)
+                .mileageKmpl(new BigDecimal("14.00"))
+                .totalDistanceKm(new BigDecimal("7.00"))
+                .availableSeats(2)
+                .rideStatus(RideStatus.COMPLETED)
+                .build();
+
+        rideRepository.save(ownRide);
+        rideRepository.save(otherRide);
+        rideRepository.save(completedRide);
+
+        // When Driver 100 searches, own ride is excluded -> only otherRide returned
+        mockMvc.perform(get("/api/rides")
+                        .header("Authorization", "Bearer " + driverToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.rideId", is(ride1.getRideId().intValue())))
-                .andExpect(jsonPath("$.startLocation", is("Easwari College")));
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].driverId", is(101)));
 
-        // Non-existent ID returns 404
-        mockMvc.perform(get("/api/rides/99999")
-                        .header("Authorization", "Bearer " + riderToken))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.status", is(404)));
-
-        // List all rides
+        // When Rider 200 searches, both open rides (100 and 101) returned
         mockMvc.perform(get("/api/rides")
                         .header("Authorization", "Bearer " + riderToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
 
-        // Filter by destination
-        mockMvc.perform(get("/api/rides")
-                        .param("destination", "Vadapalani")
-                        .header("Authorization", "Bearer " + riderToken))
+        // Driver 100 checks /api/rides/mine -> returns own ride
+        mockMvc.perform(get("/api/rides/mine")
+                        .header("Authorization", "Bearer " + driverToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].startLocation", is("Easwari College")));
+                .andExpect(jsonPath("$[0].driverId", is(100)));
+    }
+
+    @Test
+    @DisplayName("Phase 2: Driver cancelling ride cascades CANCELLED status to all confirmed bookings")
+    void testDriverCancelCascadesToConfirmedBookings() throws Exception {
+        Ride ride = Ride.builder()
+                .driverId(100L)
+                .startLocation("Porur")
+                .destination(Ride.EEC_NAME)
+                .departureTime(LocalDateTime.now().plusHours(2))
+                .vehicleType(VehicleType.FOUR_WHEELER)
+                .mileageKmpl(new BigDecimal("15.00"))
+                .totalDistanceKm(new BigDecimal("10.00"))
+                .availableSeats(2)
+                .rideStatus(RideStatus.SCHEDULED)
+                .build();
+        ride = rideRepository.save(ride);
+
+        Booking booking = Booking.builder()
+                .rideId(ride.getRideId())
+                .riderId(200L)
+                .bookingStatus(BookingStatus.CONFIRMED)
+                .bookingTime(LocalDateTime.now())
+                .build();
+        booking = bookingRepository.save(booking);
+
+        // Driver cancels ride
+        mockMvc.perform(patch("/api/rides/" + ride.getRideId() + "/status")
+                        .header("Authorization", "Bearer " + driverToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateRideStatusRequest(RideStatus.CANCELLED))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rideStatus", is("CANCELLED")));
+
+        // Check booking was cascaded to CANCELLED
+        Booking updatedBooking = bookingRepository.findById(booking.getBookingId()).orElseThrow();
+        assertThat(updatedBooking.getBookingStatus()).isEqualTo(BookingStatus.CANCELLED);
+    }
+
+    @Test
+    @DisplayName("Phase 2: Completing a ride snapshots the fuel rate per litre")
+    void testCompletingRideSnapshotsFuelRate() throws Exception {
+        Ride ride = Ride.builder()
+                .driverId(100L)
+                .startLocation("Porur")
+                .destination(Ride.EEC_NAME)
+                .departureTime(LocalDateTime.now().plusHours(2))
+                .vehicleType(VehicleType.FOUR_WHEELER)
+                .mileageKmpl(new BigDecimal("15.00"))
+                .totalDistanceKm(new BigDecimal("10.00"))
+                .availableSeats(3)
+                .rideStatus(RideStatus.ONGOING)
+                .build();
+        ride = rideRepository.save(ride);
+
+        mockMvc.perform(patch("/api/rides/" + ride.getRideId() + "/status")
+                        .header("Authorization", "Bearer " + driverToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateRideStatusRequest(RideStatus.COMPLETED))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rideStatus", is("COMPLETED")));
+
+        Ride completed = rideRepository.findById(ride.getRideId()).orElseThrow();
+        assertThat(completed.getFuelRatePerLitre()).isNotNull();
+        assertThat(completed.getFuelRatePerLitre()).isEqualByComparingTo(fuelRateProvider.getCurrentRatePerLitre());
     }
 
     @Test
