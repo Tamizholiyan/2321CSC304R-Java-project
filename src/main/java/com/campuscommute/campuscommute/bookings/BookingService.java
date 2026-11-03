@@ -1,5 +1,9 @@
 package com.campuscommute.campuscommute.bookings;
 
+import com.campuscommute.campuscommute.auth.StudentDirectory;
+import com.campuscommute.campuscommute.auth.StudentDirectoryRepository;
+import com.campuscommute.campuscommute.auth.User;
+import com.campuscommute.campuscommute.auth.UserRepository;
 import com.campuscommute.campuscommute.bookings.dto.BookingResponse;
 import com.campuscommute.campuscommute.rides.InvalidRideStateException;
 import com.campuscommute.campuscommute.rides.Ride;
@@ -18,10 +22,19 @@ public class BookingService {
 
     private final BookingRepository bookingRepository;
     private final RideRepository rideRepository;
+    private final UserRepository userRepository;
+    private final StudentDirectoryRepository studentDirectoryRepository;
 
-    public BookingService(BookingRepository bookingRepository, RideRepository rideRepository) {
+    public BookingService(
+            BookingRepository bookingRepository,
+            RideRepository rideRepository,
+            UserRepository userRepository,
+            StudentDirectoryRepository studentDirectoryRepository
+    ) {
         this.bookingRepository = bookingRepository;
         this.rideRepository = rideRepository;
+        this.userRepository = userRepository;
+        this.studentDirectoryRepository = studentDirectoryRepository;
     }
 
     @Transactional
@@ -29,6 +42,11 @@ public class BookingService {
         // Pessimistic write lock ensures row-level isolation on the ride
         Ride ride = rideRepository.findByIdForUpdate(rideId)
                 .orElseThrow(() -> new RideNotFoundException(rideId));
+
+        // A user cannot book their own ride (409 with clear message)
+        if (ride.getDriverId().equals(riderId)) {
+            throw new InvalidRideStateException("Drivers cannot book a seat on their own ride");
+        }
 
         if (ride.getRideStatus() == RideStatus.FULL || ride.getAvailableSeats() <= 0) {
             throw new OverbookingException("No available seats left on this ride");
@@ -62,45 +80,54 @@ public class BookingService {
                 .build();
         Booking savedBooking = bookingRepository.save(booking);
 
-        return BookingResponse.from(savedBooking);
+        return toBookingResponse(savedBooking, ride);
     }
 
     @Transactional
     public BookingResponse cancel(Long bookingId, Long riderId) {
-        Booking booking = bookingRepository.findById(bookingId)
+        Booking existingBooking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingNotFoundException(bookingId));
 
-        if (!booking.getRiderId().equals(riderId)) {
+        if (!existingBooking.getRiderId().equals(riderId)) {
             throw new AccessDeniedException("You do not have permission to cancel this booking");
         }
 
-        if (booking.getBookingStatus() == BookingStatus.CANCELLED) {
-            return BookingResponse.from(booking);
+        // Lock the ride FIRST using findByIdForUpdate
+        Ride ride = rideRepository.findByIdForUpdate(existingBooking.getRideId())
+                .orElseThrow(() -> new RideNotFoundException(existingBooking.getRideId()));
+
+        // THEN re-read the booking status so two simultaneous cancels cannot add the seat twice
+        Booking refreshedBooking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new BookingNotFoundException(bookingId));
+
+        if (refreshedBooking.getBookingStatus() == BookingStatus.CANCELLED) {
+            return toBookingResponse(refreshedBooking, ride);
         }
 
-        Ride ride = rideRepository.findByIdForUpdate(booking.getRideId())
-                .orElseThrow(() -> new RideNotFoundException(booking.getRideId()));
-
+        // Do not add a seat back if the ride is CANCELLED/ONGOING/COMPLETED
         if (ride.getRideStatus() == RideStatus.ONGOING || ride.getRideStatus() == RideStatus.COMPLETED) {
             throw new InvalidRideStateException("Cannot cancel booking for a ride that is " + ride.getRideStatus());
         }
 
-        booking.setBookingStatus(BookingStatus.CANCELLED);
-        Booking savedBooking = bookingRepository.save(booking);
+        refreshedBooking.setBookingStatus(BookingStatus.CANCELLED);
+        Booking savedBooking = bookingRepository.save(refreshedBooking);
 
-        if (ride.getRideStatus() == RideStatus.FULL) {
-            ride.setRideStatus(RideStatus.SCHEDULED);
+        // Only restore available seat if the ride is SCHEDULED or FULL
+        if (ride.getRideStatus() == RideStatus.SCHEDULED || ride.getRideStatus() == RideStatus.FULL) {
+            if (ride.getRideStatus() == RideStatus.FULL) {
+                ride.setRideStatus(RideStatus.SCHEDULED);
+            }
+            ride.setAvailableSeats(ride.getAvailableSeats() + 1);
+            rideRepository.save(ride);
         }
-        ride.setAvailableSeats(ride.getAvailableSeats() + 1);
-        rideRepository.save(ride);
 
-        return BookingResponse.from(savedBooking);
+        return toBookingResponse(savedBooking, ride);
     }
 
     @Transactional(readOnly = true)
     public List<BookingResponse> getBookingsByRider(Long riderId) {
         return bookingRepository.findByRiderId(riderId).stream()
-                .map(BookingResponse::from)
+                .map(b -> toBookingResponse(b, null))
                 .toList();
     }
 
@@ -113,9 +140,43 @@ public class BookingService {
             throw new AccessDeniedException("Only the driver of this ride can view its bookings");
         }
 
-        return bookingRepository.findByRideId(rideId).stream()
-                .map(BookingResponse::from)
+        // Returns confirmed bookings only for driver inspection
+        return bookingRepository.findByRideIdAndBookingStatus(rideId, BookingStatus.CONFIRMED).stream()
+                .map(b -> toBookingResponse(b, ride))
                 .toList();
     }
-}
 
+    private BookingResponse toBookingResponse(Booking booking, Ride ride) {
+        if (ride == null && booking.getRideId() != null) {
+            ride = rideRepository.findById(booking.getRideId()).orElse(null);
+        }
+
+        String driverName = null;
+        String driverPhone = null;
+        if (ride != null && ride.getDriverId() != null) {
+            User driver = userRepository.findById(ride.getDriverId()).orElse(null);
+            if (driver != null) {
+                driverPhone = driver.getPhoneNumber();
+                StudentDirectory s = studentDirectoryRepository.findById(driver.getRegisterNumber()).orElse(null);
+                if (s != null) driverName = s.getFullName();
+            }
+        }
+
+        String riderName = null;
+        String riderDepartment = null;
+        String riderPhone = null;
+        if (booking.getRiderId() != null) {
+            User rider = userRepository.findById(booking.getRiderId()).orElse(null);
+            if (rider != null) {
+                riderPhone = rider.getPhoneNumber();
+                StudentDirectory s = studentDirectoryRepository.findById(rider.getRegisterNumber()).orElse(null);
+                if (s != null) {
+                    riderName = s.getFullName();
+                    riderDepartment = s.getDepartment();
+                }
+            }
+        }
+
+        return BookingResponse.of(booking, ride, driverName, driverPhone, riderName, riderDepartment, riderPhone);
+    }
+}
