@@ -1,7 +1,7 @@
 # Campus Commute — System Architecture & Handoff Guide
 
-> **Target Audience:** AI Assistants and Developers implementing Modules 3 and 4, and frontend integrations.  
-> **Status:** Module 1 (Identity & Access + Shared Infrastructure), Module 2 (Rides Lifecycle & Route Matching), and Client Frontend (SPA) are **Completed, Verified, and Frozen**.  
+> **Target Audience:** Developers, Reviewers, and Evaluators, and frontend integrations.  
+> **Status:** All 4 Modules (Module 1: Identity & Access, Module 2: Rides Lifecycle, Module 3: Concurrency-Safe Bookings, Module 4: Pricing, Settlement, WebSockets & OpenAPI) and Client Frontend (SPA) are **Completed, Verified, and Frozen**.  
 > **Institution:** Easwari Engineering College (EEC), Ramapuram, Chennai, India.  
 
 ---

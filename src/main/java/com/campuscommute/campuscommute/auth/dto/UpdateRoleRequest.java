@@ -4,6 +4,6 @@ import com.campuscommute.campuscommute.auth.Role;
 import jakarta.validation.constraints.NotNull;
 
 public record UpdateRoleRequest(
-        @NotNull(message = "Role is required (DRIVER or RIDER)")
+        @NotNull(message = "Role is required (DRIVER, RIDER, or BOTH)")
         Role role
 ) {}

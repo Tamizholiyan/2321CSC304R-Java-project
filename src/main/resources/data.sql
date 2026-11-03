@@ -14,3 +14,12 @@ INSERT INTO student_directory (register_number, full_name, department, year_of_s
 ('310621104010', 'Deepak Sundaram', 'Automobile Engineering', 4),
 ('310625104397', 'Tamizholiyan', 'Computer Science and Engineering', 2),
 ('310625104423', 'Varshini', 'Computer Science and Engineering', 2);
+
+-- Pre-Registered Sample Accounts (Password for all: Password@123)
+-- Driver Account (Kavitha R)
+INSERT INTO users (register_number, phone_number, password_hash, role) VALUES
+('310621104001', '9876543210', '$2a$10$FrOdk9kaqeHOCf3gaMEM1uhGLWgp8v9lQ5SwhzKBLFIKRw2o2zez6', 'DRIVER');
+
+-- Passenger Account (Arun Kumar S)
+INSERT INTO users (register_number, phone_number, password_hash, role) VALUES
+('310621104002', '9876543211', '$2a$10$FrOdk9kaqeHOCf3gaMEM1uhGLWgp8v9lQ5SwhzKBLFIKRw2o2zez6', 'RIDER');

@@ -8,6 +8,7 @@ import com.campuscommute.campuscommute.bookings.DuplicateBookingException;
 import com.campuscommute.campuscommute.bookings.OverbookingException;
 import com.campuscommute.campuscommute.rides.InvalidRideStateException;
 import com.campuscommute.campuscommute.rides.RideNotFoundException;
+import com.campuscommute.campuscommute.pricing.RideNotCompletedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -195,6 +196,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateBookingException.class)
     public ResponseEntity<ApiError> handleDuplicateBooking(
             DuplicateBookingException ex, HttpServletRequest request) {
+        ApiError error = ApiError.of(
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+    // ==========================================
+    // MODULE 4: PRICING & SETTLEMENT EXCEPTIONS
+    // ==========================================
+
+    @ExceptionHandler(RideNotCompletedException.class)
+    public ResponseEntity<ApiError> handleRideNotCompleted(
+            RideNotCompletedException ex, HttpServletRequest request) {
         ApiError error = ApiError.of(
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),
