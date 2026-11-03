@@ -8,6 +8,7 @@ import com.campuscommute.campuscommute.bookings.DuplicateBookingException;
 import com.campuscommute.campuscommute.bookings.OverbookingException;
 import com.campuscommute.campuscommute.rides.InvalidRideStateException;
 import com.campuscommute.campuscommute.rides.RideNotFoundException;
+import com.campuscommute.campuscommute.rides.RideOverlapException;
 import com.campuscommute.campuscommute.pricing.RideNotCompletedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -218,6 +219,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidRideStateException.class)
     public ResponseEntity<ApiError> handleInvalidRideState(
             InvalidRideStateException ex, HttpServletRequest request) {
+        ApiError error = ApiError.of(
+                HttpStatus.CONFLICT.value(),
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(RideOverlapException.class)
+    public ResponseEntity<ApiError> handleRideOverlap(
+            RideOverlapException ex, HttpServletRequest request) {
         ApiError error = ApiError.of(
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),

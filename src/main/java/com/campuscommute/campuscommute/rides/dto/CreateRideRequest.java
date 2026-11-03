@@ -33,10 +33,24 @@ public record CreateRideRequest(
         LocalDateTime departureTime,
 
         @NotNull(message = "Pickup latitude is required")
+        @DecimalMin(value = "-90.0", message = "Pickup latitude must be between -90 and 90")
+        @DecimalMax(value = "90.0", message = "Pickup latitude must be between -90 and 90")
         Double pickupLat,
 
         @NotNull(message = "Pickup longitude is required")
+        @DecimalMin(value = "-180.0", message = "Pickup longitude must be between -180 and 180")
+        @DecimalMax(value = "180.0", message = "Pickup longitude must be between -180 and 180")
         Double pickupLng,
+
+        @NotNull(message = "Drop latitude is required")
+        @DecimalMin(value = "-90.0", message = "Drop latitude must be between -90 and 90")
+        @DecimalMax(value = "90.0", message = "Drop latitude must be between -90 and 90")
+        Double dropLat,
+
+        @NotNull(message = "Drop longitude is required")
+        @DecimalMin(value = "-180.0", message = "Drop longitude must be between -180 and 180")
+        @DecimalMax(value = "180.0", message = "Drop longitude must be between -180 and 180")
+        Double dropLng,
 
         @NotNull(message = "Mileage is required")
         @DecimalMin(value = "5.0", message = "Mileage must be at least 5 km/l")
@@ -63,6 +77,39 @@ public record CreateRideRequest(
     }
 
     /**
+     * Backward-compatible convenience constructor for tests with default drop coordinates at EEC.
+     */
+    public CreateRideRequest(
+            String startLocation,
+            String destination,
+            VehicleType vehicleType,
+            String vehicleModel,
+            String vehiclePlate,
+            LocalDateTime departureTime,
+            Double pickupLat,
+            Double pickupLng,
+            BigDecimal mileageKmpl,
+            Integer availableSeats,
+            String notes
+    ) {
+        this(
+                startLocation,
+                destination,
+                vehicleType,
+                vehicleModel,
+                vehiclePlate,
+                departureTime,
+                pickupLat,
+                pickupLng,
+                Ride.EEC_LAT,
+                Ride.EEC_LNG,
+                mileageKmpl,
+                availableSeats,
+                notes
+        );
+    }
+
+    /**
      * Backward-compatible convenience constructor for tests with default vehicle & coordinate attributes.
      */
     public CreateRideRequest(
@@ -81,6 +128,8 @@ public record CreateRideRequest(
                 LocalDateTime.now().plusHours(2),
                 13.0359,
                 80.1568,
+                Ride.EEC_LAT,
+                Ride.EEC_LNG,
                 mileageKmpl,
                 availableSeats,
                 null

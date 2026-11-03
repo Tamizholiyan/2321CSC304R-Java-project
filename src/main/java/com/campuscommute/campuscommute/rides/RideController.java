@@ -45,10 +45,22 @@ public class RideController {
             @AuthenticationPrincipal Long currentUserId,
             @RequestParam(value = "start", required = false) String start,
             @RequestParam(value = "startLocation", required = false) String startLocation,
-            @RequestParam(value = "destination", required = false) String destination
+            @RequestParam(value = "destination", required = false) String destination,
+            @RequestParam(value = "pickupLat", required = false) Double pickupLat,
+            @RequestParam(value = "pickupLng", required = false) Double pickupLng,
+            @RequestParam(value = "dropLat", required = false) Double dropLat,
+            @RequestParam(value = "dropLng", required = false) Double dropLng
     ) {
         String effectiveStart = (start != null && !start.isBlank()) ? start : startLocation;
-        List<RideResponse> rides = rideService.getRides(currentUserId, effectiveStart, destination);
+        List<RideResponse> rides = rideService.getRides(
+                currentUserId,
+                effectiveStart,
+                destination,
+                pickupLat,
+                pickupLng,
+                dropLat,
+                dropLng
+        );
         return ResponseEntity.ok(rides);
     }
 

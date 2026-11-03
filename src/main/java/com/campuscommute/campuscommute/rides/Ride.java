@@ -63,6 +63,12 @@ public class Ride {
     @Column(name = "pickup_lng")
     private Double pickupLng;
 
+    @Column(name = "drop_lat")
+    private Double dropLat;
+
+    @Column(name = "drop_lng")
+    private Double dropLng;
+
     @Column(name = "notes", length = 500)
     private String notes;
 

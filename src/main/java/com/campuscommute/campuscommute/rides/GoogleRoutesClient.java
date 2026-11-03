@@ -147,6 +147,21 @@ public class GoogleRoutesClient {
         return BigDecimal.valueOf(roadDistanceKm).setScale(2, RoundingMode.HALF_UP);
     }
 
+    /**
+     * Straight-line geodesic distance in kilometers between two coordinates (Haversine formula).
+     * Used for proximity radius and EEC 500m geofence checks.
+     */
+    public static double computeStraightDistanceKm(double lat1, double lon1, double lat2, double lon2) {
+        final double earthRadiusKm = 6371.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadiusKm * c;
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record ComputeRoutesRequest(
             Waypoint origin,

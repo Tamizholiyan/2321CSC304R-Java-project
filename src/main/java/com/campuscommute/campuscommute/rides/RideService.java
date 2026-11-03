@@ -10,12 +10,18 @@ import com.campuscommute.campuscommute.bookings.BookingStatus;
 import com.campuscommute.campuscommute.pricing.FuelRateProvider;
 import com.campuscommute.campuscommute.rides.dto.CreateRideRequest;
 import com.campuscommute.campuscommute.rides.dto.RideResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -29,6 +35,12 @@ public class RideService {
     private final UserRepository userRepository;
     private final StudentDirectoryRepository studentDirectoryRepository;
     private final FuelRateProvider fuelRateProvider;
+
+    @Value("${rides.min-gap-minutes:60}")
+    private long minGapMinutes = 60;
+
+    @Value("${rides.search.proximity-radius-km:5.0}")
+    private double proximityRadiusKm = 5.0;
 
     public RideService(
             RideRepository rideRepository,
@@ -53,14 +65,53 @@ public class RideService {
             throw new IllegalArgumentException("Driver ID must not be null");
         }
 
-        // Distance is computed on the server (Decision D4)
+        // Race safety: Acquire pessimistic write lock on the driver's User record.
+        // This serializes concurrent ride creation requests for the same driver,
+        // preventing two simultaneous requests from bypassing the departure overlap check.
+        userRepository.findByIdForUpdate(driverId)
+                .orElseThrow(() -> new IllegalArgumentException("Driver not found with ID: " + driverId));
+
+        // Decision D5: Rides have a pickup AND a drop, both with coordinates.
+        // At least one end must be within 500m of Easwari Engineering College (EEC).
+        double pickupToEecKm = GoogleRoutesClient.computeStraightDistanceKm(
+                request.pickupLat(), request.pickupLng(), Ride.EEC_LAT, Ride.EEC_LNG);
+        double dropToEecKm = GoogleRoutesClient.computeStraightDistanceKm(
+                request.dropLat(), request.dropLng(), Ride.EEC_LAT, Ride.EEC_LNG);
+        if (pickupToEecKm > 0.5 && dropToEecKm > 0.5) {
+            throw new IllegalArgumentException("One end of the ride must be Easwari Engineering College");
+        }
+
+        // Decision D6: Overlap check - driver's SCHEDULED or ONGOING rides must have departure
+        // times at least min-gap-minutes apart. Cancelled and completed rides do not block a slot.
+        List<Ride> activeRides = rideRepository.findActiveRidesByDriverId(driverId);
+        for (Ride existing : activeRides) {
+            if (existing.getDepartureTime() != null && request.departureTime() != null) {
+                LocalDateTime existingTime = existing.getDepartureTime().truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
+                LocalDateTime requestTime = request.departureTime().truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
+                long minutesBetween = Math.abs(Duration.between(existingTime, requestTime).toMinutes());
+                if (minutesBetween < minGapMinutes) {
+                    String formattedTime = existing.getDepartureTime().format(DateTimeFormatter.ofPattern("h:mm a", java.util.Locale.ENGLISH));
+                    throw new RideOverlapException(String.format(
+                            "You already have a ride at %s. Rides must be at least %d minutes apart.",
+                            formattedTime,
+                            minGapMinutes
+                    ));
+                }
+            }
+        }
+
+        String destination = (request.destination() != null && !request.destination().isBlank())
+                ? request.destination()
+                : Ride.EEC_NAME;
+
+        // Distance (D4) is computed from pickup to drop, not to a fixed EEC point
         BigDecimal totalDistanceKm = googleRoutesClient.computeDistanceKm(
                 request.pickupLat(),
                 request.pickupLng(),
-                Ride.EEC_LAT,
-                Ride.EEC_LNG,
+                request.dropLat(),
+                request.dropLng(),
                 request.startLocation(),
-                Ride.EEC_NAME,
+                destination,
                 request.vehicleType()
         );
 
@@ -68,37 +119,40 @@ public class RideService {
         if (totalDistanceKm == null || totalDistanceKm.compareTo(BigDecimal.ZERO) <= 0) {
             totalDistanceKm = googleRoutesClient.computeDistanceKm(
                     request.startLocation(),
-                    Ride.EEC_NAME,
+                    destination,
                     request.vehicleType()
             );
         }
 
-        // Fallback to Haversine if still 0 or null
+        // Fallback to Haversine straight-line * 1.25 if still 0 or null
         if ((totalDistanceKm == null || totalDistanceKm.compareTo(BigDecimal.ZERO) <= 0)
-                && request.pickupLat() != null && request.pickupLng() != null) {
+                && request.pickupLat() != null && request.pickupLng() != null
+                && request.dropLat() != null && request.dropLng() != null) {
             totalDistanceKm = GoogleRoutesClient.computeHaversineDistanceKm(
                     request.pickupLat(),
                     request.pickupLng(),
-                    Ride.EEC_LAT,
-                    Ride.EEC_LNG
+                    request.dropLat(),
+                    request.dropLng()
             );
         }
 
         // Never store 0: reject a ride whose distance is <= 0 (Decision D4)
         if (totalDistanceKm == null || totalDistanceKm.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Ride distance must be greater than zero. Pickup location cannot be at EEC campus.");
+            throw new IllegalArgumentException("Ride distance must be greater than zero. Pickup location and drop location cannot be identical.");
         }
 
         Ride ride = Ride.builder()
                 .driverId(driverId)
                 .startLocation(request.startLocation())
-                .destination(Ride.EEC_NAME)
+                .destination(destination)
                 .vehicleType(request.vehicleType())
                 .vehicleModel(request.vehicleModel())
                 .vehiclePlate(request.vehiclePlate())
                 .departureTime(request.departureTime())
                 .pickupLat(request.pickupLat())
                 .pickupLng(request.pickupLng())
+                .dropLat(request.dropLat())
+                .dropLng(request.dropLng())
                 .notes(request.notes())
                 .mileageKmpl(request.mileageKmpl())
                 .totalDistanceKm(totalDistanceKm)
@@ -111,7 +165,15 @@ public class RideService {
     }
 
     @Transactional(readOnly = true)
-    public List<RideResponse> getRides(Long callerId, String start, String destination) {
+    public List<RideResponse> getRides(
+            Long callerId,
+            String start,
+            String destination,
+            Double pickupLat,
+            Double pickupLng,
+            Double dropLat,
+            Double dropLng
+    ) {
         String filterStart = (start != null && !start.isBlank()) ? start.trim() : null;
         String filterDest = (destination != null && !destination.isBlank()) ? destination.trim() : null;
 
@@ -122,14 +184,46 @@ public class RideService {
                 filterStart,
                 filterDest
         );
+
+        boolean hasProximityCoords = (pickupLat != null && pickupLng != null && dropLat != null && dropLng != null);
+        if (hasProximityCoords) {
+            List<RideResponse> filtered = new ArrayList<>();
+            for (Ride ride : rides) {
+                if (ride.getPickupLat() == null || ride.getPickupLng() == null ||
+                    ride.getDropLat() == null || ride.getDropLng() == null) {
+                    continue; // Skip legacy rides missing drop coordinates
+                }
+                double pickupDist = GoogleRoutesClient.computeStraightDistanceKm(
+                        pickupLat, pickupLng, ride.getPickupLat(), ride.getPickupLng());
+                double dropDist = GoogleRoutesClient.computeStraightDistanceKm(
+                        dropLat, dropLng, ride.getDropLat(), ride.getDropLng());
+
+                if (pickupDist <= proximityRadiusKm && dropDist <= proximityRadiusKm) {
+                    double roundedPickupDist = BigDecimal.valueOf(pickupDist)
+                            .setScale(1, RoundingMode.HALF_UP)
+                            .doubleValue();
+                    filtered.add(toRideResponse(ride, roundedPickupDist));
+                }
+            }
+            // Sort by pickup distance then departure time
+            filtered.sort(Comparator.comparing(RideResponse::pickupDistanceKm)
+                    .thenComparing(RideResponse::departureTime, Comparator.nullsLast(Comparator.naturalOrder())));
+            return filtered;
+        }
+
         return rides.stream()
                 .map(this::toRideResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
+    public List<RideResponse> getRides(Long callerId, String start, String destination) {
+        return getRides(callerId, start, destination, null, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
     public List<RideResponse> getRides(String start, String destination) {
-        return getRides(null, start, destination);
+        return getRides(null, start, destination, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
@@ -208,6 +302,10 @@ public class RideService {
     }
 
     private RideResponse toRideResponse(Ride ride) {
+        return toRideResponse(ride, null);
+    }
+
+    private RideResponse toRideResponse(Ride ride, Double pickupDistanceKm) {
         String driverName = null;
         String department = null;
         if (ride.getDriverId() != null) {
@@ -220,6 +318,6 @@ public class RideService {
                 }
             }
         }
-        return RideResponse.from(ride, driverName, department);
+        return RideResponse.from(ride, driverName, department, pickupDistanceKm);
     }
 }

@@ -20,13 +20,16 @@ public record RideResponse(
         LocalDateTime departureTime,
         Double pickupLat,
         Double pickupLng,
+        Double dropLat,
+        Double dropLng,
         String notes,
         BigDecimal mileageKmpl,
         BigDecimal totalDistanceKm,
         Integer availableSeats,
-        RideStatus rideStatus
+        RideStatus rideStatus,
+        Double pickupDistanceKm
 ) {
-    public static RideResponse from(Ride ride, String driverName, String department) {
+    public static RideResponse from(Ride ride, String driverName, String department, Double pickupDistanceKm) {
         return new RideResponse(
                 ride.getRideId(),
                 ride.getDriverId(),
@@ -40,15 +43,22 @@ public record RideResponse(
                 ride.getDepartureTime(),
                 ride.getPickupLat(),
                 ride.getPickupLng(),
+                ride.getDropLat(),
+                ride.getDropLng(),
                 ride.getNotes(),
                 ride.getMileageKmpl(),
                 ride.getTotalDistanceKm(),
                 ride.getAvailableSeats(),
-                ride.getRideStatus()
+                ride.getRideStatus(),
+                pickupDistanceKm
         );
     }
 
+    public static RideResponse from(Ride ride, String driverName, String department) {
+        return from(ride, driverName, department, null);
+    }
+
     public static RideResponse from(Ride ride) {
-        return from(ride, null, null);
+        return from(ride, null, null, null);
     }
 }
