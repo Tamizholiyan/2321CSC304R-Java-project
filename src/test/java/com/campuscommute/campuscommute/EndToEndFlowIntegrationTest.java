@@ -180,7 +180,7 @@ public class EndToEndFlowIntegrationTest {
                 .andExpect(jsonPath("$.totalFuelCost", is(136.67)))
                 .andExpect(jsonPath("$.perPersonShare", is(68.34)));
 
-        // 9. Peer-to-Peer Settlement check:
+        // 9. Peer-to-Peer Settlement check (Rider):
         mockMvc.perform(get("/api/rides/" + rideId + "/settlement")
                         .header("Authorization", "Bearer " + riderAuth.accessToken()))
                 .andExpect(status().isOk())
@@ -189,5 +189,34 @@ public class EndToEndFlowIntegrationTest {
                 .andExpect(jsonPath("$.upiDeepLink", containsString("upi://pay?pa=driver%40okhdfcbank")))
                 .andExpect(jsonPath("$.upiLink", containsString("upi://pay?pa=driver%40okhdfcbank")))
                 .andExpect(jsonPath("$.upiDeepLink", containsString("am=68.34")));
+
+        // 9b. Driver also fetches settlement:
+        mockMvc.perform(get("/api/rides/" + rideId + "/settlement")
+                        .header("Authorization", "Bearer " + driverAuth.accessToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.driverPhoneNumber", is("9876543210")))
+                .andExpect(jsonPath("$.perPersonShare", is(68.34)))
+                .andExpect(jsonPath("$.upiLink", containsString("upi://pay?pa=driver%40okhdfcbank")));
+
+        // 10. Register Outsider student (Student: 310621104003) who has no booking on this ride
+        RegisterRequest outsiderReg = new RegisterRequest("310621104003", "9876543212", "Password@123");
+        MvcResult outsiderRegResult = mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(outsiderReg)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        AuthResponse outsiderAuth = objectMapper.readValue(outsiderRegResult.getResponse().getContentAsString(), AuthResponse.class);
+
+        // Outsider attempts to fetch pricing -> 403 Forbidden
+        mockMvc.perform(get("/api/rides/" + rideId + "/pricing")
+                        .header("Authorization", "Bearer " + outsiderAuth.accessToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status", is(403)));
+
+        // Outsider attempts to fetch settlement -> 403 Forbidden
+        mockMvc.perform(get("/api/rides/" + rideId + "/settlement")
+                        .header("Authorization", "Bearer " + outsiderAuth.accessToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status", is(403)));
     }
 }
