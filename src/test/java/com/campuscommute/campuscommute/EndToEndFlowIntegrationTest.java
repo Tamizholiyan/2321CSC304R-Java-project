@@ -97,6 +97,14 @@ public class EndToEndFlowIntegrationTest {
                 .andReturn();
         driverAuth = objectMapper.readValue(refreshResult.getResponse().getContentAsString(), AuthResponse.class);
 
+        // Driver sets UPI ID for settlements
+        mockMvc.perform(patch("/api/users/me/upi")
+                        .header("Authorization", "Bearer " + driverAuth.accessToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"upiId\":\"driver@okhdfcbank\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.upiId", is("driver@okhdfcbank")));
+
         // 2. Register Passenger (Student: 310621104002) - defaults to RIDER
         RegisterRequest riderReg = new RegisterRequest("310621104002", "9876543211", "Password@123");
         MvcResult riderRegResult = mockMvc.perform(post("/api/auth/register")
@@ -178,7 +186,8 @@ public class EndToEndFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.driverPhoneNumber", is("9876543210")))
                 .andExpect(jsonPath("$.perPersonShare", is(68.34)))
-                .andExpect(jsonPath("$.upiDeepLink", containsString("upi://pay?pa=9876543210@upi")))
+                .andExpect(jsonPath("$.upiDeepLink", containsString("upi://pay?pa=driver%40okhdfcbank")))
+                .andExpect(jsonPath("$.upiLink", containsString("upi://pay?pa=driver%40okhdfcbank")))
                 .andExpect(jsonPath("$.upiDeepLink", containsString("am=68.34")));
     }
 }

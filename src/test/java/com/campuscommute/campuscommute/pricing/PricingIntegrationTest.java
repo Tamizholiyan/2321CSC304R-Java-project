@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -50,6 +51,10 @@ public class PricingIntegrationTest {
 
     private String userToken;
     private User driver;
+    private User rider;
+    private String riderToken;
+    private User outsider;
+    private String outsiderToken;
 
     @BeforeEach
     void setUp() {
@@ -60,8 +65,22 @@ public class PricingIntegrationTest {
             User newUser = new User("310621104001", "9876543210", "$2a$10$dummyHash", Role.DRIVER);
             return userRepository.save(newUser);
         });
+        driver.setUpiId("driver@okaxis");
+        driver = userRepository.save(driver);
+
+        rider = userRepository.findByPhoneNumber("9876543211").orElseGet(() -> {
+            User newUser = new User("310621104002", "9876543211", "$2a$10$dummyHash", Role.RIDER);
+            return userRepository.save(newUser);
+        });
+
+        outsider = userRepository.findByPhoneNumber("9876543212").orElseGet(() -> {
+            User newUser = new User("310621104003", "9876543212", "$2a$10$dummyHash", Role.RIDER);
+            return userRepository.save(newUser);
+        });
 
         userToken = jwtUtil.generateAccessToken(driver.getUserId(), Role.DRIVER);
+        riderToken = jwtUtil.generateAccessToken(rider.getUserId(), Role.RIDER);
+        outsiderToken = jwtUtil.generateAccessToken(outsider.getUserId(), Role.RIDER);
     }
 
     @Test
@@ -117,10 +136,10 @@ public class PricingIntegrationTest {
                 .build();
         Ride savedRide = rideRepository.save(completedRide);
 
-        // Add 2 confirmed bookings
+        // Add 2 confirmed bookings (one is rider)
         Booking b1 = Booking.builder()
                 .rideId(savedRide.getRideId())
-                .riderId(101L)
+                .riderId(rider.getUserId())
                 .bookingTime(LocalDateTime.now())
                 .bookingStatus(BookingStatus.CONFIRMED)
                 .build();
@@ -133,6 +152,7 @@ public class PricingIntegrationTest {
         bookingRepository.save(b1);
         bookingRepository.save(b2);
 
+        // Driver can view pricing
         mockMvc.perform(get("/api/rides/" + savedRide.getRideId() + "/pricing")
                         .header("Authorization", "Bearer " + userToken)
                         .contentType(MediaType.APPLICATION_JSON))
@@ -141,10 +161,90 @@ public class PricingIntegrationTest {
                 .andExpect(jsonPath("$.occupantCount", is(3)))
                 .andExpect(jsonPath("$.totalFuelCost", is(205.00)))
                 .andExpect(jsonPath("$.perPersonShare", is(68.33)));
+
+        // Confirmed passenger can also view pricing
+        mockMvc.perform(get("/api/rides/" + savedRide.getRideId() + "/pricing")
+                        .header("Authorization", "Bearer " + riderToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rideId", is(savedRide.getRideId().intValue())))
+                .andExpect(jsonPath("$.perPersonShare", is(68.33)));
     }
 
     @Test
-    @DisplayName("GET /api/rides/{id}/settlement returns pricing breakdown and UPI deep-link string")
+    @DisplayName("GET /api/rides/{id}/pricing by outsider returns 403 Forbidden")
+    void getPricing_ByOutsider_Returns403() throws Exception {
+        Ride completedRide = Ride.builder()
+                .driverId(driver.getUserId())
+                .startLocation("Guindy")
+                .destination("Easwari Engineering College")
+                .vehicleType(VehicleType.FOUR_WHEELER)
+                .mileageKmpl(new BigDecimal("15.00"))
+                .totalDistanceKm(new BigDecimal("30.00"))
+                .availableSeats(1)
+                .rideStatus(RideStatus.COMPLETED)
+                .build();
+        Ride savedRide = rideRepository.save(completedRide);
+
+        mockMvc.perform(get("/api/rides/" + savedRide.getRideId() + "/pricing")
+                        .header("Authorization", "Bearer " + outsiderToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status", is(403)));
+    }
+
+    @Test
+    @DisplayName("GET /api/rides/{id}/settlement by outsider returns 403 Forbidden")
+    void getSettlement_ByOutsider_Returns403() throws Exception {
+        Ride completedRide = Ride.builder()
+                .driverId(driver.getUserId())
+                .startLocation("Guindy")
+                .destination("Easwari Engineering College")
+                .vehicleType(VehicleType.FOUR_WHEELER)
+                .mileageKmpl(new BigDecimal("15.00"))
+                .totalDistanceKm(new BigDecimal("30.00"))
+                .availableSeats(1)
+                .rideStatus(RideStatus.COMPLETED)
+                .build();
+        Ride savedRide = rideRepository.save(completedRide);
+
+        mockMvc.perform(get("/api/rides/" + savedRide.getRideId() + "/settlement")
+                        .header("Authorization", "Bearer " + outsiderToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status", is(403)));
+    }
+
+    @Test
+    @DisplayName("GET /api/rides/{id}/pricing uses fuelRatePerLitre snapshot when present")
+    void getPricing_UsesFuelRateSnapshot() throws Exception {
+        // Distance = 20 km, Mileage = 10 km/l -> 2 litres
+        // Snapshot rate = 110.00 -> Total Fuel Cost = 220.00
+        // Occupant = 1 driver -> Share = 220.00
+        Ride completedRide = Ride.builder()
+                .driverId(driver.getUserId())
+                .startLocation("Tambaram")
+                .destination("Easwari Engineering College")
+                .vehicleType(VehicleType.FOUR_WHEELER)
+                .mileageKmpl(new BigDecimal("10.00"))
+                .totalDistanceKm(new BigDecimal("20.00"))
+                .fuelRatePerLitre(new BigDecimal("110.00"))
+                .availableSeats(3)
+                .rideStatus(RideStatus.COMPLETED)
+                .build();
+        Ride savedRide = rideRepository.save(completedRide);
+
+        mockMvc.perform(get("/api/rides/" + savedRide.getRideId() + "/pricing")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ratePerLitre", is(110.00)))
+                .andExpect(jsonPath("$.totalFuelCost", is(220.00)))
+                .andExpect(jsonPath("$.perPersonShare", is(220.00)));
+    }
+
+    @Test
+    @DisplayName("GET /api/rides/{id}/settlement returns pricing breakdown and URL-encoded UPI deep-link string when driver has UPI")
     void getSettlement_CompletedRide_ReturnsUpiDeepLink() throws Exception {
         Ride completedRide = Ride.builder()
                 .driverId(driver.getUserId())
@@ -161,7 +261,7 @@ public class PricingIntegrationTest {
         // 1 passenger
         Booking b1 = Booking.builder()
                 .rideId(savedRide.getRideId())
-                .riderId(201L)
+                .riderId(rider.getUserId())
                 .bookingTime(LocalDateTime.now())
                 .bookingStatus(BookingStatus.CONFIRMED)
                 .build();
@@ -173,9 +273,61 @@ public class PricingIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rideId", is(savedRide.getRideId().intValue())))
                 .andExpect(jsonPath("$.occupantCount", is(2)))
-                .andExpect(jsonPath("$.upiDeepLink", containsString("upi://pay?pa=")))
+                .andExpect(jsonPath("$.driverPhoneNumber", is("9876543210")))
+                .andExpect(jsonPath("$.upiDeepLink", containsString("upi://pay?pa=driver%40okaxis")))
                 .andExpect(jsonPath("$.upiDeepLink", containsString("&am=")))
-                .andExpect(jsonPath("$.upiDeepLink", containsString("&cu=INR")));
+                .andExpect(jsonPath("$.upiDeepLink", containsString("&cu=INR")))
+                .andExpect(jsonPath("$.upiLink", containsString("upi://pay?pa=driver%40okaxis")));
+    }
+
+    @Test
+    @DisplayName("GET /api/rides/{id}/settlement returns null upiLink and driver phone when driver has no UPI ID")
+    void getSettlement_NoDriverUpi_ReturnsNullUpiLink() throws Exception {
+        driver.setUpiId(null);
+        userRepository.save(driver);
+
+        Ride completedRide = Ride.builder()
+                .driverId(driver.getUserId())
+                .startLocation("Tambaram")
+                .destination("Easwari Engineering College")
+                .vehicleType(VehicleType.TWO_WHEELER)
+                .mileageKmpl(new BigDecimal("40.00"))
+                .totalDistanceKm(new BigDecimal("20.00"))
+                .availableSeats(0)
+                .rideStatus(RideStatus.COMPLETED)
+                .build();
+        Ride savedRide = rideRepository.save(completedRide);
+
+        mockMvc.perform(get("/api/rides/" + savedRide.getRideId() + "/settlement")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.driverPhoneNumber", is("9876543210")))
+                .andExpect(jsonPath("$.upiDeepLink", nullValue()))
+                .andExpect(jsonPath("$.upiLink", nullValue()));
+    }
+
+    @Test
+    @DisplayName("GET /api/rides/{id}/pricing on ride with distance <= 0 returns 409 Conflict")
+    void getPricing_ZeroDistance_Returns409() throws Exception {
+        Ride completedRide = Ride.builder()
+                .driverId(driver.getUserId())
+                .startLocation("Tambaram")
+                .destination("Easwari Engineering College")
+                .vehicleType(VehicleType.TWO_WHEELER)
+                .mileageKmpl(new BigDecimal("40.00"))
+                .totalDistanceKm(BigDecimal.ZERO)
+                .availableSeats(0)
+                .rideStatus(RideStatus.COMPLETED)
+                .build();
+        Ride savedRide = rideRepository.save(completedRide);
+
+        mockMvc.perform(get("/api/rides/" + savedRide.getRideId() + "/pricing")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status", is(409)))
+                .andExpect(jsonPath("$.message", containsString("invalid distance")));
     }
 
     @Test
@@ -187,4 +339,3 @@ public class PricingIntegrationTest {
                 .andExpect(jsonPath("$.info.title", is("Campus Commute API")));
     }
 }
-
