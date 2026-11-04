@@ -68,4 +68,14 @@ public class BookingController {
         List<BookingResponse> bookings = bookingService.getBookingsForRide(rideId, currentUserId);
         return ResponseEntity.ok(bookings);
     }
+
+    @GetMapping("/api/bookings")
+    @PreAuthorize("hasAuthority('ROLE_DRIVER')")
+    public ResponseEntity<List<BookingResponse>> getBookingsByParam(
+            @RequestParam("rideId") Long rideId,
+            @AuthenticationPrincipal Long currentUserId
+    ) {
+        List<BookingResponse> bookings = bookingService.getBookingsForRide(rideId, currentUserId);
+        return ResponseEntity.ok(bookings);
+    }
 }
