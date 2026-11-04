@@ -27,9 +27,10 @@ public record RideResponse(
         BigDecimal totalDistanceKm,
         Integer availableSeats,
         RideStatus rideStatus,
-        Double pickupDistanceKm
+        Double pickupDistanceKm,
+        String conflictMessage
 ) {
-    public static RideResponse from(Ride ride, String driverName, String department, Double pickupDistanceKm) {
+    public static RideResponse from(Ride ride, String driverName, String department, Double pickupDistanceKm, String conflictMessage) {
         return new RideResponse(
                 ride.getRideId(),
                 ride.getDriverId(),
@@ -50,15 +51,20 @@ public record RideResponse(
                 ride.getTotalDistanceKm(),
                 ride.getAvailableSeats(),
                 ride.getRideStatus(),
-                pickupDistanceKm
+                pickupDistanceKm,
+                conflictMessage
         );
     }
 
+    public static RideResponse from(Ride ride, String driverName, String department, Double pickupDistanceKm) {
+        return from(ride, driverName, department, pickupDistanceKm, null);
+    }
+
     public static RideResponse from(Ride ride, String driverName, String department) {
-        return from(ride, driverName, department, null);
+        return from(ride, driverName, department, null, null);
     }
 
     public static RideResponse from(Ride ride) {
-        return from(ride, null, null, null);
+        return from(ride, null, null, null, null);
     }
 }

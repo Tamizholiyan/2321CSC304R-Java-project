@@ -35,9 +35,7 @@ public class RideService {
     private final UserRepository userRepository;
     private final StudentDirectoryRepository studentDirectoryRepository;
     private final FuelRateProvider fuelRateProvider;
-
-    @Value("${rides.min-gap-minutes:60}")
-    private long minGapMinutes = 60;
+    private final ScheduleConflictService scheduleConflictService;
 
     @Value("${rides.search.proximity-radius-km:5.0}")
     private double proximityRadiusKm = 5.0;
@@ -49,7 +47,8 @@ public class RideService {
             BookingRepository bookingRepository,
             UserRepository userRepository,
             StudentDirectoryRepository studentDirectoryRepository,
-            FuelRateProvider fuelRateProvider
+            FuelRateProvider fuelRateProvider,
+            ScheduleConflictService scheduleConflictService
     ) {
         this.rideRepository = rideRepository;
         this.rideStatusValidator = rideStatusValidator;
@@ -58,6 +57,7 @@ public class RideService {
         this.userRepository = userRepository;
         this.studentDirectoryRepository = studentDirectoryRepository;
         this.fuelRateProvider = fuelRateProvider;
+        this.scheduleConflictService = scheduleConflictService;
     }
 
     public RideResponse createRide(Long driverId, CreateRideRequest request) {
@@ -65,9 +65,9 @@ public class RideService {
             throw new IllegalArgumentException("Driver ID must not be null");
         }
 
-        // Race safety: Acquire pessimistic write lock on the driver's User record.
-        // This serializes concurrent ride creation requests for the same driver,
-        // preventing two simultaneous requests from bypassing the departure overlap check.
+        // Race safety: Fixed lock order - lock User FIRST.
+        // Always acquiring locks in the same hierarchical order (User -> Ride) across all operations
+        // prevents deadlocks between concurrent booking and ride operations.
         userRepository.findByIdForUpdate(driverId)
                 .orElseThrow(() -> new IllegalArgumentException("Driver not found with ID: " + driverId));
 
@@ -81,24 +81,8 @@ public class RideService {
             throw new IllegalArgumentException("One end of the ride must be Easwari Engineering College");
         }
 
-        // Decision D6: Overlap check - driver's SCHEDULED or ONGOING rides must have departure
-        // times at least min-gap-minutes apart. Cancelled and completed rides do not block a slot.
-        List<Ride> activeRides = rideRepository.findActiveRidesByDriverId(driverId);
-        for (Ride existing : activeRides) {
-            if (existing.getDepartureTime() != null && request.departureTime() != null) {
-                LocalDateTime existingTime = existing.getDepartureTime().truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
-                LocalDateTime requestTime = request.departureTime().truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
-                long minutesBetween = Math.abs(Duration.between(existingTime, requestTime).toMinutes());
-                if (minutesBetween < minGapMinutes) {
-                    String formattedTime = existing.getDepartureTime().format(DateTimeFormatter.ofPattern("h:mm a", java.util.Locale.ENGLISH));
-                    throw new RideOverlapException(String.format(
-                            "You already have a ride at %s. Rides must be at least %d minutes apart.",
-                            formattedTime,
-                            minGapMinutes
-                    ));
-                }
-            }
-        }
+        // Decision D7: Unified schedule conflict check (replaces D6)
+        scheduleConflictService.assertFree(driverId, request.departureTime());
 
         String destination = (request.destination() != null && !request.destination().isBlank())
                 ? request.destination()
@@ -185,6 +169,11 @@ public class RideService {
                 filterDest
         );
 
+        // Pre-load caller's commitments once so we don't query per ride (Decision D7)
+        List<ScheduleConflictService.Commitment> callerCommitments = (callerId != null)
+                ? scheduleConflictService.getCommitments(callerId)
+                : List.of();
+
         boolean hasProximityCoords = (pickupLat != null && pickupLng != null && dropLat != null && dropLng != null);
         if (hasProximityCoords) {
             List<RideResponse> filtered = new ArrayList<>();
@@ -202,7 +191,8 @@ public class RideService {
                     double roundedPickupDist = BigDecimal.valueOf(pickupDist)
                             .setScale(1, RoundingMode.HALF_UP)
                             .doubleValue();
-                    filtered.add(toRideResponse(ride, roundedPickupDist));
+                    String conflictMessage = scheduleConflictService.findConflictMessage(callerCommitments, ride.getDepartureTime());
+                    filtered.add(toRideResponse(ride, roundedPickupDist, conflictMessage));
                 }
             }
             // Sort by pickup distance then departure time
@@ -212,7 +202,10 @@ public class RideService {
         }
 
         return rides.stream()
-                .map(this::toRideResponse)
+                .map(ride -> {
+                    String conflictMessage = scheduleConflictService.findConflictMessage(callerCommitments, ride.getDepartureTime());
+                    return toRideResponse(ride, null, conflictMessage);
+                })
                 .toList();
     }
 
@@ -302,10 +295,14 @@ public class RideService {
     }
 
     private RideResponse toRideResponse(Ride ride) {
-        return toRideResponse(ride, null);
+        return toRideResponse(ride, null, null);
     }
 
     private RideResponse toRideResponse(Ride ride, Double pickupDistanceKm) {
+        return toRideResponse(ride, pickupDistanceKm, null);
+    }
+
+    private RideResponse toRideResponse(Ride ride, Double pickupDistanceKm, String conflictMessage) {
         String driverName = null;
         String department = null;
         if (ride.getDriverId() != null) {
@@ -318,6 +315,6 @@ public class RideService {
                 }
             }
         }
-        return RideResponse.from(ride, driverName, department, pickupDistanceKm);
+        return RideResponse.from(ride, driverName, department, pickupDistanceKm, conflictMessage);
     }
 }

@@ -100,8 +100,12 @@ public class BookingIntegrationTest {
         riderUser = new User("310621104002", "9123456780", "pass123", Role.RIDER);
         riderUser = userRepository.save(riderUser);
 
+        // Create rider 2 user
+        User rider2User = new User("310621104003", "9123456789", "pass123", Role.RIDER);
+        rider2User = userRepository.save(rider2User);
+
         rider1Token = jwtUtil.generateAccessToken(riderUser.getUserId(), Role.RIDER);
-        rider2Token = jwtUtil.generateAccessToken(202L, Role.RIDER);
+        rider2Token = jwtUtil.generateAccessToken(rider2User.getUserId(), Role.RIDER);
         driverToken = jwtUtil.generateAccessToken(driverUser.getUserId(), Role.DRIVER);
 
         testRide = Ride.builder()

@@ -524,7 +524,7 @@ public class RideIntegrationTest {
                         .content(objectMapper.writeValueAsString(request2)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status", is(409)))
-                .andExpect(jsonPath("$.message", containsString("Rides must be at least 60 minutes apart")));
+                .andExpect(jsonPath("$.message", containsString("Rides must be at least 90 minutes apart")));
     }
 
     @Test
@@ -556,12 +556,12 @@ public class RideIntegrationTest {
                         .content(objectMapper.writeValueAsString(request2)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status", is(409)))
-                .andExpect(jsonPath("$.message", containsString("Rides must be at least 60 minutes apart")));
+                .andExpect(jsonPath("$.message", containsString("Rides must be at least 90 minutes apart")));
     }
 
     @Test
-    @DisplayName("Phase 8: Departure time exactly 60 minutes apart accepted with 201 Created")
-    void testCreateRide_Exactly60MinutesApart_AcceptedWith201() throws Exception {
+    @DisplayName("Phase 8: Departure time exactly 90 minutes apart accepted with 201 Created")
+    void testCreateRide_Exactly90MinutesApart_AcceptedWith201() throws Exception {
         LocalDateTime departure1 = LocalDateTime.now().plusHours(2).truncatedTo(java.time.temporal.ChronoUnit.MINUTES);
         CreateRideRequest request1 = new CreateRideRequest(
                 "Porur", Ride.EEC_NAME, VehicleType.FOUR_WHEELER,
@@ -575,7 +575,7 @@ public class RideIntegrationTest {
                         .content(objectMapper.writeValueAsString(request1)))
                 .andExpect(status().isCreated());
 
-        LocalDateTime departure2 = departure1.plusMinutes(60);
+        LocalDateTime departure2 = departure1.plusMinutes(90);
         CreateRideRequest request2 = new CreateRideRequest(
                 "Porur", Ride.EEC_NAME, VehicleType.FOUR_WHEELER,
                 "Swift", "TN01AA1111", departure2,

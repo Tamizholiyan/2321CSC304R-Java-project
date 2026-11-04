@@ -33,7 +33,7 @@ public interface RideRepository extends JpaRepository<Ride, Long> {
             @Param("destination") String destination
     );
 
-    @Query("SELECT r FROM Ride r WHERE r.driverId = :driverId AND r.rideStatus IN (com.campuscommute.campuscommute.rides.RideStatus.SCHEDULED, com.campuscommute.campuscommute.rides.RideStatus.ONGOING)")
+    @Query("SELECT r FROM Ride r WHERE r.driverId = :driverId AND r.rideStatus IN (com.campuscommute.campuscommute.rides.RideStatus.SCHEDULED, com.campuscommute.campuscommute.rides.RideStatus.FULL, com.campuscommute.campuscommute.rides.RideStatus.ONGOING)")
     List<Ride> findActiveRidesByDriverId(@Param("driverId") Long driverId);
 
     @Query("SELECT r FROM Ride r WHERE r.driverId = :driverId ORDER BY r.departureTime DESC, r.rideId DESC")

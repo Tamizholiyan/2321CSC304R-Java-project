@@ -10,6 +10,7 @@ import com.campuscommute.campuscommute.rides.Ride;
 import com.campuscommute.campuscommute.rides.RideNotFoundException;
 import com.campuscommute.campuscommute.rides.RideRepository;
 import com.campuscommute.campuscommute.rides.RideStatus;
+import com.campuscommute.campuscommute.rides.ScheduleConflictService;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,21 +25,31 @@ public class BookingService {
     private final RideRepository rideRepository;
     private final UserRepository userRepository;
     private final StudentDirectoryRepository studentDirectoryRepository;
+    private final ScheduleConflictService scheduleConflictService;
 
     public BookingService(
             BookingRepository bookingRepository,
             RideRepository rideRepository,
             UserRepository userRepository,
-            StudentDirectoryRepository studentDirectoryRepository
+            StudentDirectoryRepository studentDirectoryRepository,
+            ScheduleConflictService scheduleConflictService
     ) {
         this.bookingRepository = bookingRepository;
         this.rideRepository = rideRepository;
         this.userRepository = userRepository;
         this.studentDirectoryRepository = studentDirectoryRepository;
+        this.scheduleConflictService = scheduleConflictService;
     }
 
     @Transactional
     public BookingResponse bookRide(Long riderId, Long rideId) {
+        // Race safety: Fixed lock order - lock User FIRST, then lock Ride SECOND.
+        // Booking acquires User -> Ride. Ride creation acquires User. Cancel acquires Ride.
+        // Acquiring locks in this strictly consistent hierarchy (User, then Ride) prevents deadlocks
+        // between concurrent ride creation and booking operations.
+        userRepository.findByIdForUpdate(riderId)
+                .orElseThrow(() -> new IllegalArgumentException("Rider not found with ID: " + riderId));
+
         // Pessimistic write lock ensures row-level isolation on the ride
         Ride ride = rideRepository.findByIdForUpdate(rideId)
                 .orElseThrow(() -> new RideNotFoundException(rideId));
@@ -46,6 +57,10 @@ public class BookingService {
         // A user cannot book their own ride (409 with clear message)
         if (ride.getDriverId().equals(riderId)) {
             throw new InvalidRideStateException("Drivers cannot book a seat on their own ride");
+        }
+
+        if (bookingRepository.existsByRideIdAndRiderIdAndBookingStatus(rideId, riderId, BookingStatus.CONFIRMED)) {
+            throw new DuplicateBookingException("Rider already has a confirmed booking for this ride");
         }
 
         if (ride.getRideStatus() == RideStatus.FULL || ride.getAvailableSeats() <= 0) {
@@ -56,9 +71,8 @@ public class BookingService {
             throw new InvalidRideStateException("Cannot book a ride in status: " + ride.getRideStatus());
         }
 
-        if (bookingRepository.existsByRideIdAndRiderIdAndBookingStatus(rideId, riderId, BookingStatus.CONFIRMED)) {
-            throw new DuplicateBookingException("Rider already has a confirmed booking for this ride");
-        }
+        // Decision D7: Unified schedule conflict check
+        scheduleConflictService.assertFree(riderId, ride.getDepartureTime());
 
         if (ride.getAvailableSeats() <= 0) {
             throw new OverbookingException("No available seats left on this ride");
