@@ -1,0 +1,6 @@
+target/
+.git/
+.env
+application-supabase.properties
+application-local.properties
+*.md

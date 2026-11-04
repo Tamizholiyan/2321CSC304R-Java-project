@@ -125,7 +125,7 @@ public record CreateRideRequest(
                 vehicleType,
                 "Swift Dzire",
                 "TN09CC1234",
-                LocalDateTime.now().plusHours(2),
+                LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")).plusHours(2),
                 13.0359,
                 80.1568,
                 Ride.EEC_LAT,

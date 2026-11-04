@@ -15,6 +15,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -26,19 +27,22 @@ public class BookingService {
     private final UserRepository userRepository;
     private final StudentDirectoryRepository studentDirectoryRepository;
     private final ScheduleConflictService scheduleConflictService;
+    private final Clock clock;
 
     public BookingService(
             BookingRepository bookingRepository,
             RideRepository rideRepository,
             UserRepository userRepository,
             StudentDirectoryRepository studentDirectoryRepository,
-            ScheduleConflictService scheduleConflictService
+            ScheduleConflictService scheduleConflictService,
+            Clock clock
     ) {
         this.bookingRepository = bookingRepository;
         this.rideRepository = rideRepository;
         this.userRepository = userRepository;
         this.studentDirectoryRepository = studentDirectoryRepository;
         this.scheduleConflictService = scheduleConflictService;
+        this.clock = clock;
     }
 
     @Transactional
@@ -89,7 +93,7 @@ public class BookingService {
         Booking booking = Booking.builder()
                 .rideId(rideId)
                 .riderId(riderId)
-                .bookingTime(LocalDateTime.now())
+                .bookingTime(LocalDateTime.now(clock))
                 .bookingStatus(BookingStatus.CONFIRMED)
                 .build();
         Booking savedBooking = bookingRepository.save(booking);

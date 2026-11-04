@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ public class RideService {
     private final StudentDirectoryRepository studentDirectoryRepository;
     private final FuelRateProvider fuelRateProvider;
     private final ScheduleConflictService scheduleConflictService;
+    private final Clock clock;
 
     @Value("${rides.search.proximity-radius-km:5.0}")
     private double proximityRadiusKm = 5.0;
@@ -48,7 +50,8 @@ public class RideService {
             UserRepository userRepository,
             StudentDirectoryRepository studentDirectoryRepository,
             FuelRateProvider fuelRateProvider,
-            ScheduleConflictService scheduleConflictService
+            ScheduleConflictService scheduleConflictService,
+            Clock clock
     ) {
         this.rideRepository = rideRepository;
         this.rideStatusValidator = rideStatusValidator;
@@ -58,6 +61,7 @@ public class RideService {
         this.studentDirectoryRepository = studentDirectoryRepository;
         this.fuelRateProvider = fuelRateProvider;
         this.scheduleConflictService = scheduleConflictService;
+        this.clock = clock;
     }
 
     public RideResponse createRide(Long driverId, CreateRideRequest request) {
@@ -70,6 +74,12 @@ public class RideService {
         // prevents deadlocks between concurrent booking and ride operations.
         userRepository.findByIdForUpdate(driverId)
                 .orElseThrow(() -> new IllegalArgumentException("Driver not found with ID: " + driverId));
+
+        // Future departure check using injected Asia/Kolkata Clock
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (request.departureTime() == null || !request.departureTime().isAfter(now)) {
+            throw new IllegalArgumentException("Departure time must be in the future");
+        }
 
         // Decision D5: Rides have a pickup AND a drop, both with coordinates.
         // At least one end must be within 500m of Easwari Engineering College (EEC).
@@ -164,7 +174,7 @@ public class RideService {
         // Search returns only SCHEDULED rides with available seats and future departure, excluding caller's own
         List<Ride> rides = rideRepository.searchOpenRides(
                 callerId,
-                LocalDateTime.now(),
+                LocalDateTime.now(clock),
                 filterStart,
                 filterDest
         );

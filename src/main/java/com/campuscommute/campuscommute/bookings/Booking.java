@@ -47,7 +47,7 @@ public class Booking {
     @PrePersist
     protected void onCreate() {
         if (bookingTime == null) {
-            bookingTime = LocalDateTime.now();
+            bookingTime = LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata"));
         }
     }
 }

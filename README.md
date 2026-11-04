@@ -75,3 +75,28 @@ Tests execute against an isolated in-memory H2 database using test credentials d
 .\mvnw.cmd test
 ```
 
+---
+
+## Deploy on Render
+
+Follow these steps to deploy Campus Commute as a Web Service on [Render](https://render.com):
+
+1. **Create Web Service:**
+   - Link this GitHub repository.
+   - **Environment / Runtime:** `Docker` (Render automatically uses the multi-stage `Dockerfile` at the repository root).
+   - **Region:** `Singapore` (closest low-latency region to Chennai, India).
+   - **Instance Type:** `Free` (512 MB RAM, 0.1 CPU).
+2. **Health Check Path:**
+   - Set **Health Check Path** to: `/api/health`
+3. **Configure Environment Variables:**
+   Under the **Environment** tab, configure the following variables (use your private secrets; placeholders shown below):
+   - `SPRING_DATASOURCE_URL`: `jdbc:postgresql://<supabase-host>:5432/<database>?sslmode=require`
+   - `SPRING_DATASOURCE_USERNAME`: `postgres.<project-ref>`
+   - `SPRING_DATASOURCE_PASSWORD`: `<your-supabase-db-password>`
+   - `JWT_SECRET`: `<your-random-64-character-jwt-secret>`
+   - `GOOGLE_ROUTES_API_KEY`: `<optional-google-routes-api-key>` (optional; straight-line haversine x 1.25 is used if omitted)
+4. **Deploy:**
+   - Click **Create Web Service**.
+   - Render will build the Docker container image, execute `java -XX:MaxRAMPercentage=65 -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -Xss512k -Duser.timezone=Asia/Kolkata -jar app.jar`, and monitor `/api/health` until healthy.
+
+
