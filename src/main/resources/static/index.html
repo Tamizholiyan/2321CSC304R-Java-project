@@ -3148,6 +3148,8 @@
             const phone = document.getElementById('regPhone').value.trim();
             const password = document.getElementById('regPassword').value;
             const role = document.getElementById('regRole').value;
+            const emailInput = document.getElementById('regEmail');
+            const email = emailInput && emailInput.value ? emailInput.value.trim() : null;
             const btn = document.getElementById('regSubmitBtn');
 
             btn.disabled = true;
@@ -3157,7 +3159,7 @@
                 const res = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ registerNumber: regNo, phoneNumber: phone, password: password })
+                    body: JSON.stringify({ registerNumber: regNo, phoneNumber: phone, password: password, email: email })
                 });
 
                 const data = await res.json();
@@ -4726,6 +4728,22 @@
         });
 
         function initAppInputsAndAutocomplete() {
+            // Institutional derived email auto-fill on 12-digit register number entry
+            const regNoInput = document.getElementById('regRegisterNo');
+            const regEmailInput = document.getElementById('regEmail');
+            if (regNoInput && regEmailInput) {
+                regNoInput.addEventListener('input', () => {
+                    const val = regNoInput.value.trim();
+                    if (/^\d{12}$/.test(val)) {
+                        regEmailInput.value = val + '@eec.srmrmp.edu.in';
+                        regEmailInput.readOnly = true;
+                    } else {
+                        regEmailInput.value = '';
+                        regEmailInput.readOnly = false;
+                    }
+                });
+            }
+
             const dashFrom = document.getElementById('dashFrom');
             const dashTo = document.getElementById('dashTo');
             const offerPickup = document.getElementById('offerPickup');

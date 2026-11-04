@@ -1,0 +1,12 @@
+# Supabase PostgreSQL Session Pooler URL (SSL mode required)
+spring.datasource.url=jdbc:postgresql://aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require
+
+# Supabase database user for the session pooler
+spring.datasource.username=postgres.wmfoqymsmiabkcsgihab
+
+# Supabase database password (replace with real password privately; DO NOT commit)
+spring.datasource.password=PASTE_DB_PASSWORD_HERE
+
+# JWT Signing Secret (must be at least 256 bits / 64 hex characters)
+campuscommute.jwt.secret=PASTE_RANDOM_64_CHARS_HERE
+

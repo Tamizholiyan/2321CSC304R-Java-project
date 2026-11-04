@@ -391,4 +391,85 @@ public class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.upiId", is("kavitha@oksbi")));
     }
+
+    @Test
+    @DisplayName("Phase 13: All 28 CSE Year 2 students exist in student_directory with correct names, dept and year")
+    void testAll28CseYear2StudentsExistInDirectory() {
+        java.util.Map<String, String> expectedStudents = java.util.Map.ofEntries(
+                java.util.Map.entry("310625104307", "Sahil Chaudhary"),
+                java.util.Map.entry("310625104389", "Surya N"),
+                java.util.Map.entry("310625104390", "Suryapriya"),
+                java.util.Map.entry("310625104391", "Sushaanth"),
+                java.util.Map.entry("310625104392", "Sushmitha"),
+                java.util.Map.entry("310625104393", "Suvanika Shree"),
+                java.util.Map.entry("310625104394", "Swetha"),
+                java.util.Map.entry("310625104395", "Swetha Vasudevan"),
+                java.util.Map.entry("310625104396", "Syed Hassan"),
+                java.util.Map.entry("310625104397", "Tamizholiyan"),
+                java.util.Map.entry("310625104398", "Tanushree"),
+                java.util.Map.entry("310625104399", "Tanushri Muralidharan"),
+                java.util.Map.entry("310625104400", "Tejna"),
+                java.util.Map.entry("310625104401", "Thabitha Sharen"),
+                java.util.Map.entry("310625104402", "Thampu Raj"),
+                java.util.Map.entry("310625104403", "Thanush"),
+                java.util.Map.entry("310625104404", "Thanushree"),
+                java.util.Map.entry("310625104405", "Tharukeswaran"),
+                java.util.Map.entry("310625104406", "Tharun"),
+                java.util.Map.entry("310625104407", "Tharun Karthick"),
+                java.util.Map.entry("310625104409", "Thavanesh Ramesh"),
+                java.util.Map.entry("310625104410", "Theertha"),
+                java.util.Map.entry("310625104411", "Thejas"),
+                java.util.Map.entry("310625104412", "Thillai Vignesh"),
+                java.util.Map.entry("310625104413", "Thirukumaran"),
+                java.util.Map.entry("310625104414", "Thiyagesan"),
+                java.util.Map.entry("310625104415", "Thrijagathi"),
+                java.util.Map.entry("310625104416", "Thrinayani")
+        );
+
+        assertThat(expectedStudents).hasSize(28);
+
+        expectedStudents.forEach((regNo, expectedName) -> {
+            var studentOpt = studentDirectoryRepository.findById(regNo);
+            assertThat(studentOpt).as("Student with regNo " + regNo + " must exist in directory").isPresent();
+            var student = studentOpt.get();
+            assertThat(student.getFullName()).as("Full name for " + regNo).isEqualTo(expectedName);
+            assertThat(student.getDepartment()).as("Department for " + regNo).isEqualTo("Computer Science and Engineering");
+            assertThat(student.getYearOfStudy()).as("Year of study for " + regNo).isEqualTo(2);
+        });
+    }
+
+    @Test
+    @DisplayName("Phase 13: Registration succeeds for listed CSE student and validates derived college email")
+    void testRegistrationWithDerivedCollegeEmailValidation() throws Exception {
+        // 1. Mismatched email returns 400 Bad Request
+        RegisterRequest mismatchedEmailRequest = new RegisterRequest(
+                "310625104307",
+                "9876543220",
+                "Password@123",
+                "wrong.email@gmail.com"
+        );
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(mismatchedEmailRequest)))
+                .andExpect(status().isBadRequest());
+
+        // 2. Matching derived email succeeds
+        RegisterRequest validRequest = new RegisterRequest(
+                "310625104307",
+                "9876543220",
+                "Password@123",
+                "310625104307@eec.srmrmp.edu.in"
+        );
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accessToken", notNullValue()))
+                .andExpect(jsonPath("$.user.fullName", is("Sahil Chaudhary")));
+
+        // Verify user was stored in database
+        assertThat(userRepository.findByRegisterNumber("310625104307")).isPresent();
+    }
 }

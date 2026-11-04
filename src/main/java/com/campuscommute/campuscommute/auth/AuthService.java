@@ -5,7 +5,9 @@ import com.campuscommute.campuscommute.auth.dto.LoginRequest;
 import com.campuscommute.campuscommute.auth.dto.RefreshTokenRequest;
 import com.campuscommute.campuscommute.auth.dto.RegisterRequest;
 import com.campuscommute.campuscommute.auth.dto.UserProfileResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,15 @@ public class AuthService {
         // 1. Walled-garden identity verification against static college directory
         StudentDirectory student = studentDirectoryRepository.findById(request.registerNumber())
                 .orElseThrow(() -> new UnauthorizedInstitutionalAccessException(request.registerNumber()));
+
+        // 1b. Verify derived institutional email if provided
+        if (request.email() != null && !request.email().isBlank()) {
+            String expectedEmail = request.registerNumber().trim() + "@eec.srmrmp.edu.in";
+            if (!request.email().trim().equalsIgnoreCase(expectedEmail)) {
+                throw new IllegalArgumentException(
+                        "Registration email must match official college email: " + expectedEmail);
+            }
+        }
 
         // 2. Prevent duplicate registrations for already-onboarded students
         if (userRepository.existsByRegisterNumber(request.registerNumber())) {

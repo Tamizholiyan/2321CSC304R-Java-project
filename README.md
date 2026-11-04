@@ -43,29 +43,25 @@ The application starts at `http://localhost:8081`.
 
 ## Run Against Supabase PostgreSQL
 
-To connect to a managed Supabase PostgreSQL instance:
+To run the application connected to the Supabase PostgreSQL session pooler:
 
-### PowerShell
-```powershell
-$env:JWT_SECRET="YourBase64Or256BitSecretHere"
-$env:SPRING_DATASOURCE_URL="jdbc:postgresql://db.YOUR_PROJECT_REF.supabase.co:5432/postgres?sslmode=require"
-$env:SPRING_DATASOURCE_USERNAME="postgres"
-$env:SPRING_DATASOURCE_PASSWORD="YOUR_SUPABASE_PASSWORD"
-$env:SPRING_DATASOURCE_DRIVER="org.postgresql.Driver"
-
-.\mvnw.cmd spring-boot:run
-```
-
-### Bash
-```bash
-export JWT_SECRET="YourBase64Or256BitSecretHere"
-export SPRING_DATASOURCE_URL="jdbc:postgresql://db.YOUR_PROJECT_REF.supabase.co:5432/postgres?sslmode=require"
-export SPRING_DATASOURCE_USERNAME="postgres"
-export SPRING_DATASOURCE_PASSWORD="YOUR_SUPABASE_PASSWORD"
-export SPRING_DATASOURCE_DRIVER="org.postgresql.Driver"
-
-./mvnw spring-boot:run
-```
+1. Copy the example configuration template at the repository root to create your private, gitignored properties file:
+   ```bash
+   cp application-supabase.properties.example application-supabase.properties
+   # On Windows PowerShell:
+   Copy-Item application-supabase.properties.example application-supabase.properties
+   ```
+2. Open `application-supabase.properties`, paste the Supabase database password (shared privately between teammates), and supply a 64+ character JWT secret. **Never commit `application-supabase.properties` to version control.**
+3. Launch the application with the `supabase` Spring profile:
+   - **PowerShell (Windows):**
+     ```powershell
+     ./mvnw spring-boot:run "-Dspring-boot.run.profiles=supabase"
+     ```
+     *(Note: Quotes around `"-Dspring-boot.run.profiles=supabase"` are mandatory in PowerShell to prevent argument splitting).*
+   - **Bash (macOS / Linux):**
+     ```bash
+     ./mvnw spring-boot:run -Dspring-boot.run.profiles=supabase
+     ```
 
 ---
 

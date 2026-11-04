@@ -15,14 +15,23 @@ public record RegisterRequest(
 
         @NotBlank(message = "Password is required")
         @Size(min = 6, message = "Password must be at least 6 characters")
-        String password
+        String password,
+
+        String email
 ) {
+    public RegisterRequest(String registerNumber, String phoneNumber, String password) {
+        this(registerNumber, phoneNumber, password, null);
+    }
+
     public RegisterRequest {
         if (registerNumber != null) {
             registerNumber = registerNumber.trim();
         }
         if (phoneNumber != null) {
             phoneNumber = phoneNumber.trim();
+        }
+        if (email != null) {
+            email = email.trim();
         }
     }
 }

@@ -1,9 +1,14 @@
 target/
 !.mvn/wrapper/maven-wrapper.jar
 
-### Local Dev Config ###
+### Local Dev & Environment Config ###
 application-local.properties
 **/application-local.properties
+/application-supabase.properties
+application-supabase.properties
+**/application-supabase.properties
+.env
+**/.env
 
 ### STS ###
 .apt_generated
